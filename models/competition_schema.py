@@ -1,0 +1,1 @@
+"""Pydantic model to structure competition data"""
