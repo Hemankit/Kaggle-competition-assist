@@ -1,0 +1,1 @@
+"""Trying out different prompting LLM (adjust based on competition type)"""
