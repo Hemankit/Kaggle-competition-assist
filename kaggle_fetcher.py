@@ -1,1 +1,0 @@
-"""Uses Kaggle API or scraper to pull comp metadata"""
