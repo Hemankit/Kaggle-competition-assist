@@ -1,0 +1,23 @@
+# HTTP requests
+requests
+# HTML parsing and scraping
+beautifulsoup4
+lxml
+html5lib # Optional fallback parser
+# browser automation
+selenium
+# For managing dynamic pages (like JavaScript content)
+webdriver-manager
+# Logging and environment variables
+python-dotenv
+loguru
+# Optional: For structured data ingestion (like notebooks from API)
+tenacity
+# Modern AI-powered scraping (pick one or more as needed)
+firecrawl
+scrapegraphai
+crawl4ai
+# Optional: For data manipulation and analysis
+pandas
+# Optional: Retry logic and HTTP robustness
+tqdm # Optional: For progress bars

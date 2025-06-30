@@ -1,1 +1,2 @@
-"""cleans up the scraped data into HTML/Markdown format"""
+""" Contains utility functions such as text cleaning, formatting, deduplication, scoring logic, and 
+shared tools used by different agents"""

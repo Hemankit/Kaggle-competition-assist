@@ -1,0 +1,1 @@
+"""Initializes the schema package containing data model definitions."""

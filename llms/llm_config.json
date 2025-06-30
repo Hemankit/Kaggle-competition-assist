@@ -1,0 +1,22 @@
+{
+  "deep_scraping": {
+    "provider": "ollama",
+    "model": "codellama:13b",
+    "temperature": 0.1
+  },
+  "scraper_decision": {
+    "provider": "groq",
+    "model": "mixtral-8x7b",
+    "temperature": 0.2
+  },
+  "routing": {
+    "provider": "google",
+    "model": "gemini-1.5-flash",
+    "temperature": 0.1
+  },
+  "reasoning_and_interaction": {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "temperature": 0.3
+  }
+}
