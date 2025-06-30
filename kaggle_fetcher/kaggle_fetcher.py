@@ -3,14 +3,18 @@
 import json
 from typing import Union, Dict, List, Any, Optional
 from kaggle_api_client import get_notebooks_info, get_leaderboard_info, get_dataset_metadata
-
+from kaggle_api_client import get_total_notebooks_count
+import math
+import requests
+import logging
 JSONtype = Union[Dict[str, Any], List[Any]]
 
 class KaggleFetcher:
     def __init__(self):
         self.notebooks_data: JSONtype = []
         self.leaderboard_data: JSONtype = []
-
+        self.dataset_metadata: JSONtype = []
+        
     def fetch_notebooks_with_paging(self, competition_slug: str, page_count: int, page_size: int, filepath: str):
         """
         Fetches multiple pages of notebook metadata from a competition and stores it in a JSON file.
@@ -37,6 +41,32 @@ class KaggleFetcher:
             print(f"Error writing to file {filepath}: {e}")
         else:
             print(f"Fetched {len(self.notebooks_data)} notebooks from {page_count} pages.")
+
+
+    def fetch_all_notebooks(self, competition_slug: str, page_size: int, filepath: str):
+        """
+        Fetches all public notebooks for a competition and saves to JSON.
+
+        Args:
+            competition_slug (str): Identifier of the competition.
+            page_size (int): How many notebooks to fetch per page.
+            filepath (str): Where to save the collected notebook metadata.
+        """
+        print(f"Checking total notebook count for '{competition_slug}'...")
+        total_notebooks = get_total_notebooks_count(competition_slug)
+        if total_notebooks == 0:
+            print("No notebooks found or error occurred.")
+            return
+
+        page_count = math.ceil(total_notebooks / page_size)
+        print(f"Fetching all {total_notebooks} notebooks across {page_count} pages...")
+
+        self.fetch_notebooks_with_paging(
+        competition_slug=competition_slug,
+        page_count=page_count,
+        page_size=page_size,
+        filepath=filepath
+    )
 
     def fetch_leaderboard_metadata(self, competition_slug: str, filepath: str):
         """

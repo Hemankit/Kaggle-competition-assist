@@ -1,0 +1,1 @@
+"""Initializes the web scraper package for web data not available through Kaggle API."""

@@ -1,0 +1,1 @@
+"""Defines structured Pydantic models for storing scraped and fetched data from Kaggle competitions."""
