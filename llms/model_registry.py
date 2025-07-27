@@ -2,10 +2,11 @@ import json
 import os
 from typing import Any, Optional
 
-from langchain.chat_models import ChatOpenAI
+# from langchain.chat_models import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.chat_models import ChatOllama
 from langchain_groq import ChatGroq
+from langchain_deepseek import ChatDeepSeek  # Ensure you have this installed if using DeepSeek
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "llm_config.json")
 
@@ -24,8 +25,8 @@ def load_model_for_task(task_name: str) -> Any:
     model = task_config.get("model")
     temperature = task_config.get("temperature", 0.3)
 
-    if provider == "openai":
-        return ChatOpenAI(
+    if provider == "deepseek":
+        return ChatDeepSeek(
             model_name=model,
             temperature=temperature
         )

@@ -28,7 +28,18 @@ class Retriever:
 
     def rerank(self, query: str, retrieved_docs: List[dict], top_k_final: int = 5):
         logger.info(f"Reranking top {len(retrieved_docs)} documents for query: {query}")
-        reranked = self.reranker.predict(query=query, documents=retrieved_docs)
+        from haystack.schema import Document
+        haystack_docs = []
+        for doc in retrieved_docs:
+            content = (
+                doc.get("content", "")
+                or doc.get("markdown_blocks", "")
+                or doc.get("ocr_content", "")
+                or doc.get("model_card_details", "")
+            )
+            meta = doc.get("metadata", doc.get("meta", {}))
+            haystack_docs.append(Document(content=content, meta=meta))
+        reranked = self.reranker.predict(query=query, documents=haystack_docs)
         return reranked[:top_k_final]
 
     def log_retrieval(self, query: str, retrieved_docs: List[dict], section: str = None):
@@ -42,7 +53,14 @@ class Retriever:
         logger.info(f"📄 Retrieved {len(retrieved_docs)} documents.")
 
         for i, doc in enumerate(retrieved_docs[:5]):
+            meta = doc.get("metadata", doc.get("meta", {}))
+            content = (
+                doc.get("content", "")
+                or doc.get("markdown_blocks", "")
+                or doc.get("ocr_content", "")
+                or doc.get("model_card_details", "")
+            )
             logger.info(f"  📘 Document {i + 1}:")
-            logger.info(f"    Metadata: {doc.meta}")
-            snippet = doc.content[:200].replace('\n', ' ') + "..."
+            logger.info(f"    Metadata: {meta}")
+            snippet = content[:200].replace('\n', ' ') + "..."
             logger.info(f"    Content Snippet: {snippet}")

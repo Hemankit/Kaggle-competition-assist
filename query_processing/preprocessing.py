@@ -8,7 +8,7 @@ from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 
 
-def preprocess_query(query: str, remove_stopwords: bool = False, stopwords_set: set = None) -> list:
+def preprocess_query(query: str, remove_stopwords: bool = False, stopwords_set: set = None, spellcheck: bool = False) -> dict:
     """
     Lowercase, remove punctuation, tokenize, and lemmatize the input query.
 
@@ -16,9 +16,10 @@ def preprocess_query(query: str, remove_stopwords: bool = False, stopwords_set: 
         query (str): The user input string.
         remove_stopwords (bool): Whether to remove stopwords.
         stopwords_set (set, optional): Optional custom stopword list.
+        spellcheck (bool): Placeholder for future spellcheck support.
 
     Returns:
-        list: Preprocessed tokens.
+        dict: {"cleaned_query": str, "tokens": list}
     """
     cleaned = re.sub(r'[^\w\s]', '', query.lower())
     tokens = word_tokenize(cleaned)
@@ -28,7 +29,7 @@ def preprocess_query(query: str, remove_stopwords: bool = False, stopwords_set: 
     if remove_stopwords and stopwords_set:
         tokens = [token for token in tokens if token not in stopwords_set]
 
-    return tokens
+    return {"cleaned_query": cleaned, "tokens": tokens}
 
 
 def detect_code(text: str) -> bool:
@@ -54,8 +55,9 @@ def detect_question(text: str) -> bool:
 # Optional: test the preprocessing when running directly
 if __name__ == "__main__":
     sample_query = "What's the best baseline model for this competition?"
-    tokens = preprocess_query(sample_query)
-    print(f"Tokens: {tokens}")
+    result = preprocess_query(sample_query)
+    print(f"Cleaned query: {result['cleaned_query']}")
+    print(f"Tokens: {result['tokens']}")
     print(f"Contains code? {detect_code(sample_query)}")
     print(f"Contains URL? {detect_url(sample_query)}")
     print(f"Contains number? {detect_numbers(sample_query)}")

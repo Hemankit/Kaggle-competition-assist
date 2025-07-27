@@ -15,8 +15,8 @@
     "temperature": 0.1
   },
   "reasoning_and_interaction": {
-    "provider": "openai",
-    "model": "gpt-4o",
+    "provider": "deepseek",
+    "model": "deepseek-v2.0-chat",
     "temperature": 0.3
   }
 }

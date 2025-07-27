@@ -9,7 +9,23 @@ from routing.registry import AGENT_CAPABILITY_REGISTRY
 class BaseOrchestratorUtils:
     """
     Shared utility functions for orchestrators to reduce duplication.
+    Adds support for execution trace logging.
     """
+
+    def __init__(self):
+        self.last_execution_trace = []  # Stores the last execution trace (list of activated nodes)
+
+    def log_execution_trace(self, trace: list):
+        """
+        Stores the execution trace (list of activated nodes) for the last query.
+        """
+        self.last_execution_trace = trace
+
+    def get_last_execution_trace(self) -> list:
+        """
+        Returns the list of activated nodes for the last query.
+        """
+        return self.last_execution_trace
 
     def parse_intent(self, user_query: str) -> Dict[str, Any]:
         try:

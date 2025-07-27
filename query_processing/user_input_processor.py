@@ -7,44 +7,53 @@ from datetime import datetime
 import re
 from typing import Dict
 
-from query_processing.intent_classifier import Preprocessor
-from query_processing.intent_classifier import SectionClassifier
-from query_processing.intent_classifier import IntentClassifier
+
+
+from query_processing.preprocessing import preprocess_query, detect_code, detect_url, detect_numbers, detect_question
+from query_processing.embedding_utils import query_embeddings
+from query_processing.section_classifier import predict_query_section
+from query_processing.intent_classifier import classify_intent
+
+
 
 
 class UserInputProcessor:
     def __init__(self):
         self.session_state = {}  # To store user or competition session info
-        self.preprocessor = Preprocessor()
-        self.section_classifier = SectionClassifier()
-        self.intent_classifier = IntentClassifier()
+
+
 
     def structure_query(self, query: str) -> Dict:
         """
-        Process the user query, classify it by section and intent,
-        and extract relevant metadata.
+        Sequentially process the user query: preprocess, embed, classify section, then intent, and extract metadata.
         """
-        cleaned_info = self.preprocessor.preprocess_query(
-            query, remove_stopwords=False, spellcheck=False
-        )
-
+        # Step 1: Preprocessing
+        cleaned_info = preprocess_query(query, remove_stopwords=False, spellcheck=False)
         cleaned_query = cleaned_info["cleaned_query"]
         tokens = cleaned_info["tokens"]
 
-        # Intent and section classification
-        section, section_method = self.section_classifier.predict_section(cleaned_query)
-        intent, intent_method = self.intent_classifier.classify_intent(cleaned_query)
+        # Step 2: Embedding creation
+        embedding = query_embeddings(cleaned_query)
 
-        # Additional metadata
-        contains_code = bool(re.search(r'```|import |def |class |=', query))
-        contains_url = bool(re.search(r"http[s]?://", query))
-        contains_number = any(char.isdigit() for char in query)
-        contains_question = "?" in query
+        # Step 3: Section classification
+        section_result = predict_query_section(cleaned_query)
+        section = section_result["top_section"]
+        section_method = "semantic-similarity"
+
+        # Step 4: Intent classification
+        intent, intent_method = classify_intent(cleaned_query, embedding)
+
+        # Additional metadata using preprocessing helpers
+        contains_code = detect_code(query)
+        contains_url = detect_url(query)
+        contains_number = detect_numbers(query)
+        contains_question = detect_question(query)
 
         structured = {
             "original_query": query,
             "cleaned_query": cleaned_query,
             "tokens": tokens,
+            "embedding": embedding,
             "section": section,
             "intent": intent,
             "metadata": {

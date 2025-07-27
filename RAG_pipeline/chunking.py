@@ -30,7 +30,11 @@ class Chunker:
 
         chunks = []
         for doc in overview_and_discussion_docs:
-            content = doc.get("content", "")
+            content = (
+                doc.get("content", "")
+                or doc.get("markdown_blocks", "")
+                or doc.get("ocr_content", "")
+            )
             if not content.strip():
                 continue
 

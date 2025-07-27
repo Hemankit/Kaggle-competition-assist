@@ -35,10 +35,26 @@ def parse_user_intent(query: str, llm: BaseChatModel = None) -> Dict[str, Any]:
     """
     Core utility used by all orchestrators. Parses query into structured intent.
     If no LLM is passed, fallback to default router model.
+    Adds recommended_mode based on reasoning style and sub-intents.
     """
     llm = llm or get_llm_from_config()
     chain = build_router_chain(llm)
-    return chain.invoke({"query": query})
+    parsed = chain.invoke({"query": query})
+
+    # --- Auto-mode selection logic ---
+    reasoning_style = parsed.get("reasoning_style", "").lower()
+    subintents = parsed.get("sub_intents", [])
+
+    if reasoning_style == "multi-hop":
+        parsed["recommended_mode"] = "autogen"
+    elif any(s in ["timeline_planning", "code_feedback", "eda_summary"] for s in subintents):
+        parsed["recommended_mode"] = "crewai"
+    elif "strategic_monitoring" in subintents:
+        parsed["recommended_mode"] = "hybrid"
+    else:
+        parsed["recommended_mode"] = "crewai"  # default fallback
+
+    return parsed
 
 # === Optional Utility That Selects Agents Too ===
 def route_to_agents(query: str, llm: BaseChatModel = None) -> Dict[str, Any]:

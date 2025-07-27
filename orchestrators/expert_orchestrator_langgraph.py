@@ -4,7 +4,7 @@ import json
 from typing import Dict, Any, Optional, List
 
 from langchain.chains.router import RouterChain
-from langchain.chat_models import ChatOpenAI
+from langchain_community.chat_models import ChatHuggingFace
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 
@@ -12,7 +12,8 @@ from llms.gemini_llm import ChatGoogleGenerativeAI
 from routing.intent_router import MULTI_PROMPT_ROUTER_TEMPLATE
 from routing.registry import AGENT_REGISTRY
 from workflows.graph_workflow import compiled_graph
-
+from dotenv import load_dotenv
+load_dotenv()
 
 class ExpertSystemOrchestratorLangGraph:
     def __init__(self):
@@ -43,10 +44,9 @@ class ExpertSystemOrchestratorLangGraph:
         )
 
         self.aggregation_chain = LLMChain(
-            llm=ChatOpenAI(
-                model_name="mistralai/Mixtral-8x7b-Instruct-v0.1",
-                openai_api_base="https://api.together.xyz/v1",
-                openai_api_key="..."  # TODO: Replace with settings.yaml
+            llm=ChatHuggingFace(
+                repo_id="microsoft/phi-3-medium-128k-instruct",
+                temperature=0.2
             ),
             prompt=PromptTemplate.from_template(
                 """
@@ -65,6 +65,7 @@ class ExpertSystemOrchestratorLangGraph:
         )
 
         self.graph = compiled_graph
+        self.last_execution_trace = []  # Stores the last execution trace (list of activated nodes)
 
     def route_to_agents(self, original_query: str) -> Dict[str, Any]:
         few_shot_prompt = f"""
@@ -136,10 +137,32 @@ A:
 
     def handle_query(self, user_query: str, debug: bool = False) -> str:
         initial_state = {"original_query": user_query}
+        # If debug, capture intermediate steps for execution trace
         final_state = self.graph.invoke(initial_state, return_intermediate_steps=debug)
-        return final_state if debug else final_state.get("final_response", "[No response generated]")
+        if debug:
+            # Expect final_state to be a dict with 'intermediate_steps' if debug=True
+            # Otherwise, fallback to just returning final_state
+            if isinstance(final_state, dict) and "intermediate_steps" in final_state:
+                self.last_execution_trace = [step["node"] for step in final_state["intermediate_steps"] if "node" in step]
+            else:
+                self.last_execution_trace = []
+            return final_state
+        else:
+            self.last_execution_trace = []
+            return final_state.get("final_response", "[No response generated]")
+
+    def get_last_execution_trace(self) -> List[str]:
+        """
+        Returns the list of activated nodes for the last query (if debug mode was used).
+        """
+        return self.last_execution_trace
 
     def run_graph_debug(self, user_query: str):
-        return self.handle_query(user_query, debug=True)
+        """
+        Runs the graph in debug mode and returns both the final state and execution trace.
+        """
+        result = self.handle_query(user_query, debug=True)
+        trace = self.get_last_execution_trace()
+        return {"result": result, "execution_trace": trace}
 
 

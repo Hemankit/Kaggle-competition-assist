@@ -20,10 +20,28 @@ class Indexer:
     def index_scraped_data(self, pydantic_results, structured_results):
         documents_to_index = []
 
+        # Use a set to track indexed hashes (in-memory, could be persisted)
+        indexed_hashes = set(self.indexed_hashes)
+
         def create_document(item, source_type):
-            content = item.get("content", "")
+            content = (
+                item.get("content", "")
+                or item.get("markdown_blocks", "")
+                or item.get("ocr_content", "")
+                or item.get("model_card_details", "")
+            )
+            content_hash = item.get("content_hash", "")
+            if not content_hash:
+                # Optionally, compute hash if missing
+                import hashlib
+                raw_for_hash = f"{item.get('title', '')}|{item.get('url', '')}|{content}"
+                content_hash = hashlib.sha256(raw_for_hash.encode("utf-8")).hexdigest()
+            # Airport security check: skip if already indexed
+            if content_hash in indexed_hashes:
+                return None
+            indexed_hashes.add(content_hash)
             metadata = {
-                "content_hash": item.get("content_hash", ""),
+                "content_hash": content_hash,
                 "source": source_type,
                 "section": item.get("section", "unknown"),
                 "deep_scraped": item.get("deep_scraped", False),
@@ -36,10 +54,14 @@ class Indexer:
             return Document(content=content, meta=metadata)
 
         for result in pydantic_results:
-            documents_to_index.append(create_document(result, "scraped"))
+            doc = create_document(result, "scraped")
+            if doc:
+                documents_to_index.append(doc)
 
         for result in structured_results:
-            documents_to_index.append(create_document(result, "deep_scraped"))
+            doc = create_document(result, "deep_scraped")
+            if doc:
+                documents_to_index.append(doc)
 
         self.document_store.write_documents(documents_to_index)
         self.document_store.update_embeddings(

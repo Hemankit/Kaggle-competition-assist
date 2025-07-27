@@ -1,8 +1,9 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any
 
-from .redis_cache import compute_content_hash, RedisCache
+from .result_structurer import compute_content_hash
+from .redis_cache import RedisCache
 from .section_metadata import get_section_metadata
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,11 @@ class DeepScraperExecutor:
 
         for item in deep_scraped:
             content_hash = compute_content_hash(item.get("content", ""))
-            self.cache.update(content_hash, deep_scraped=True)
+            self.cache.update_cache(content_hash, deep_scraped=True)
+            item["deep_scraped"] = True
+            item["deep_scraped_at"] = datetime.now(timezone.utc).isoformat()
+            item["content_hash"] = content_hash
+            item["metadata"] = get_section_metadata(section, item)
 
         return deep_scraped
 
@@ -39,7 +44,7 @@ class DeepScraperExecutor:
         deep_scraped_results = []
         for item in items:
             content_hash = compute_content_hash(item.get("content", ""))
-            cached = self.cache.get(content_hash)
+            cached = self.cache.get_cache(content_hash)
 
             if cached and cached.get("deep_scraped"):
                 logger.info(f"Skipping cached item: {item.get('title', '')}")
@@ -57,11 +62,14 @@ class DeepScraperExecutor:
             if "YES" in decision.upper():
                 logger.info(f"Deep scraping: {item.get('title', '')}")
                 result = scraper([item])
-                deep_scraped_results.extend(result)
-
                 for r in result:
                     result_hash = compute_content_hash(r.get("content", ""))
-                    self.cache.update(result_hash, deep_scraped=True)
+                    self.cache.update_cache(result_hash, deep_scraped=True)
+                    r["deep_scraped"] = True
+                    r["deep_scraped_at"] = datetime.now(timezone.utc).isoformat()
+                    r["content_hash"] = result_hash
+                    r["metadata"] = get_section_metadata(section, r)
+                deep_scraped_results.extend(result)
             else:
                 logger.info(f"Skipping deep scrape: {item.get('title', '')}")
 

@@ -2,10 +2,13 @@
 Classifies the user's query intent using sentence embeddings with an LLM fallback.
 """
 
+from openai import api_key
 from sentence_transformers import SentenceTransformer, util
 from typing import Dict, List, Tuple
 from langchain.chat_models import ChatGoogleGenerativeAI
-
+from dotenv import load_dotenv
+load_dotenv()
+import os
 class IntentClassifier:
     def __init__(self, threshold: float = 0.65):
         self.model = SentenceTransformer("all-MiniLM-L6-v2")

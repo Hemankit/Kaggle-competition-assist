@@ -12,7 +12,18 @@ class Reranker:
             use_gpu=use_gpu
         )
 
-    def rerank(self, query: str, retrieved_docs: List[Document], top_k: int = 5) -> List[Document]:
+    def rerank(self, query: str, retrieved_docs: List[dict], top_k: int = 5) -> List[Document]:
         logger.info(f"🔁 Reranking top {len(retrieved_docs)} retrieved documents for query: '{query}'")
-        reranked_docs = self.reranker.predict(query=query, documents=retrieved_docs)
+        # Convert dicts to Haystack Document objects if needed
+        haystack_docs = []
+        for doc in retrieved_docs:
+            content = (
+                doc.get("content", "")
+                or doc.get("markdown_blocks", "")
+                or doc.get("ocr_content", "")
+                or doc.get("model_card_details", "")
+            )
+            meta = doc.get("metadata", doc.get("meta", {}))
+            haystack_docs.append(Document(content=content, meta=meta))
+        reranked_docs = self.reranker.predict(query=query, documents=haystack_docs)
         return reranked_docs[:top_k]
