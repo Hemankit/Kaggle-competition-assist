@@ -84,29 +84,42 @@ class HybridScrapingAgent:
         logger.info(f"Using scraper retriever for section: '{section}'")
         result = scraper_retriever[section]()
         return result
-    def run(self, query: str, section: str, predicted_section: str = None) -> List[Dict[str, Any]]:
-        """
-        Entry point to the hybrid scraping agent.
-        Performs deep scraping where needed and returns structured data.
-        If section is 'leaderboard' or 'data', uses API retrieval.
-        """
+    
+    def run(self, inputs: Dict[str, Any]) -> List[Dict[str, Any]]:
+        query = inputs.get("query")
+        section = inputs.get("section")
+        predicted_section = inputs.get("predicted_section", section)
         logger.info(f"[Agent] Running hybrid scraping agent for query='{query}', section='{section}'")
 
-        # If section is leaderboard or data, use API retrieval
+        # api based sections
         if section in ["leaderboard", "data"]:
-            result = self.route_to_retrieval_method(section, predicted_section or section)
+            result = self.route_to_retrieval_method(section, predicted_section)
             return [{"section": section, "content": result}]
 
-        # Always deep scrape pinned
+        # Scraping (shallow)
+        scraper_retriever = {
+            "overview": self.overview_scraper.scrape,
+            "code": self.notebook_scraper.scrape,
+            "model": self.model_scraper.scrape_models,
+            "discussion": self.discussion_scraper.scrape,
+        }
+        scrape_results = []
+        if section in scraper_retriever:
+            try:
+                scrape_results = scraper_retriever[section]()
+            except Exception as e:
+                logger.error(f"Error during scraping for section '{section}': {e}")
+                scrape_results = []
+            # Ensure scrape_results is a list
+            if not isinstance(scrape_results, list):
+                scrape_results = [scrape_results]
+
+        # Deep scraping
         pinned_results = self.deep_scraper.deep_scraping_pinned(query, section)
-
-        # Conditionally scrape non-pinned based on LLM decision
         not_pinned_results = self.deep_scraper.deep_scraping_not_pinned(query, section, self.llm)
-
-        # Merge and structure
-        all_results = pinned_results + not_pinned_results
+        all_results = scrape_results + pinned_results + not_pinned_results
         structured_results = self.result_structurer.structure_results(all_results, section)
-        # Ensure output is a list of dicts (from Pydantic model)
+
         if structured_results and hasattr(structured_results[0], 'dict'):
             return [r.dict() for r in structured_results]
         return structured_results

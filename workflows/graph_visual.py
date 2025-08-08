@@ -1,5 +1,6 @@
-from workflows.graph_workflow import compiled_graph
 import io
+from workflows.graph_workflow import compiled_graph
+
 
 def get_graph_image(execution_trace=None):
     """

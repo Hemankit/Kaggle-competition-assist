@@ -1,0 +1,83 @@
+
+ { "Understanding the Problem": {
+    "tips": [
+      "Read competition description and evaluation metric carefully.",
+      "Investigate domain context (e.g., biology in protein folding).",
+      "Download the data dictionary or reverse-engineer column meanings.",
+      "Spend ~20% of time understanding the problem before modeling."
+    ]
+  },
+  "EDA": {
+    "tips": [
+      "Use tools like pandas_profiling, sweetviz, seaborn, or plotly.",
+      "Explore distributions, missing values, outliers, and correlations.",
+      "Check label balance.",
+      "Train a classifier to detect data drift between train and test.",
+      "Set a time limit for EDA — avoid over-analyzing."
+    ]
+  },
+  "Data Preprocessing": {
+    "tips": [
+      "Handle NaNs consistently — numeric vs categorical.",
+      "Use encodings like LabelEncoding, TargetEncoding, CatBoostEncoding.",
+      "Standardize/normalize features if needed by model (e.g., SVM, KNN).",
+      "Extract time features from timestamps (hour, weekday, etc.).",
+      "Use pipelines to avoid leakage (e.g., sklearn.pipeline).",
+      "Preprocess train and test together where appropriate."
+    ]
+  },
+  "Feature Engineering": {
+    "tips": [
+      "Create interaction features (e.g., A * B, A / B).",
+      "Use domain knowledge to craft synthetic features.",
+      "Aggregate group statistics (mean, std, count).",
+      "Use SHAP, permutation importance, or LGBM feature importance.",
+      "Check for target leakage in highly predictive features.",
+      "Try AutoFeature tools (e.g., FeatureTools, tsfresh)."
+    ]
+  },
+  "Baseline Modeling": {
+    "tips": [
+      "Start with simple models (e.g., Logistic Regression, LightGBM).",
+      "Use appropriate cross-validation (e.g., StratifiedKFold).",
+      "Ensure CV score matches public leaderboard trends.",
+      "Use baseline as anchor — don’t start complex."
+    ]
+  },
+  "Iterative Improvement and Ensembling": {
+    "tips": [
+      "Use Optuna or Bayesian Optimization for hyperparameter tuning.",
+      "Blend or stack models to ensemble.",
+      "Try diverse algorithms (e.g., CatBoost, TabNet).",
+      "Consider pseudo-labeling or semi-supervised learning.",
+      "Try feature re-expression or simpler models when stuck.",
+      "Revisit EDA if progress stalls."
+    ]
+  },
+  "Leaderboard Management": {
+    "tips": [
+      "Track CV vs LB score trends.",
+      "Don’t chase small LB improvements — focus on CV.",
+      "Submit diverse models to understand generalization.",
+      "Treat public LB as noisy — don’t overfit to it."
+    ]
+  },
+  "Time Management": {
+    "tips": [
+      "Use milestones: Day 1–3 (EDA+baseline), 4–10 (feature+CV), 11–20 (tuning), final days (ensembling).",
+      "Limit time per idea to avoid rabbit holes.",
+      "Use TODO lists to manage experiments.",
+      "Take breaks and reset focus when stuck."
+    ]
+  },
+  "Meta Practices": {
+    "tips": [
+      "Use Git or notebook checkpoints for version control.",
+      "Start with reproducible notebook templates.",
+      "Seed everything for reproducibility.",
+      "Join competition discussions early.",
+      "Read top public notebooks, but don't blindly copy.",
+      "Change one variable at a time when experimenting."
+    ]
+  }
+}

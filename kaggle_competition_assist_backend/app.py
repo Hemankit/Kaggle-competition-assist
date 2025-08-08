@@ -3,6 +3,8 @@ import os
 from flask import Flask
 from .api.scraping_routes import input_processsing_bp, scraping_or_fetching_bp
 from api.RAG_and_MultiAgent import RAG_pipe_bp, multiAgent_bp
+from api.evaluation_bp import eval_bp
+from api.graph_visualization import graph_visualization_bp
 # application facrtory
 def create_app(test_config=None):
   # creating flask instance
@@ -25,6 +27,8 @@ def create_app(test_config=None):
   app.register_blueprint(scraping_or_fetching_bp)
   app.register_blueprint(RAG_pipe_bp)
   app.register_blueprint(multiAgent_bp)
+  app.register_blueprint(eval_bp)
+  app.register_blueprint(graph_visualization_bp)
   
   
 

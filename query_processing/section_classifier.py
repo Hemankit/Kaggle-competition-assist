@@ -12,7 +12,7 @@ model = SentenceTransformer("all-MiniLM-L6-v2")
 KAGGLE_SECTIONS = [
     "leaderboard",   # Ranks
     "data",          # Dataset details
-    "overview",      # Problem statement, evaluation, timeline
+    "overview",      # Problem statement, evaluation metric, timeline
     "code",          # Public notebooks
     "model",         # Model suggestions (often derived from code)
     "discussion"     # Q&A forum

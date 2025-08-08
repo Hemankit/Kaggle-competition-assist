@@ -1,5 +1,10 @@
 import os
+import json
 
+# Function to load expert guidelines from a JSON file
+def load_guidelines():
+    with open("data/expert_guidelines.json", "r") as f:
+        return json.load(f)
 class Config:
     # API keys
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -26,7 +31,10 @@ class Config:
     SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "your-default-secret-key")
     ENV = os.getenv("FLASK_ENV", "development")
 
+    import json
 
+
+    EXPERT_GUIDELINES = load_guidelines()
 
  
  
