@@ -1,18 +1,26 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_file
+from orchestrators.component_orchestrator import ComponentOrchestrator
 from workflows.graph_visual import get_graph_image
+import io
+
 graph_visualization_bp = Blueprint("graph_visualization", __name__, url_prefix="/graph-viz")
-@graph_visualization_bp.route("/image", methods=["POST"])
+
+# Instantiate orchestrator (or inject from app context)
+orchestrator = ComponentOrchestrator()
+
+@graph_visualization_bp.route("/image", methods=["GET"])
 def get_graph_image_route():
-    data = request.get_json()
-    query = data.get("query", "")
-    
-    # Get the graph image bytes for the provided query
-    img_bytes = get_graph_image(query)
-    
+    trace_info = orchestrator.get_debug_trace()
+    execution_trace = trace_info.get("trace", [])
+
+    img_bytes = get_graph_image(execution_trace)
+
     if img_bytes is None:
         return jsonify({"error": "Graph could not be generated"}), 400
-    
-    response = jsonify({"message": "Graph image generated successfully"})
-    response.headers.set("Content-Type", "image/png")
-    response.data = img_bytes
-    return response, 200
+
+    return send_file(
+        io.BytesIO(img_bytes),
+        mimetype='image/png',
+        as_attachment=False,
+        download_name="execution_graph.png"
+    )

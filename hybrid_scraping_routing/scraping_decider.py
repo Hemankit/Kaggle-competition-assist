@@ -27,16 +27,17 @@ Should this be deep scraped? Answer YES or NO and briefly explain.""")
 
         return prompt | self.llm | StrOutputParser()
 
-    def should_scrape(self, metadata: dict) -> str:
+    def should_deep_scrape(self, query: str, section: str, title: str = "", has_image: bool = False, pinned: bool = False, content_snippet: str = "") -> bool:
+        """
+        Returns True if the LLM says to deep scrape, False otherwise.
         """
         metadata = {
-            "query": str,
-            "section": str,
-            "title": str,
-            "has_image": bool,
-            "pinned": bool,
-            "content_snippet": str
+            "query": query,
+            "section": section,
+            "title": title,
+            "has_image": has_image,
+            "pinned": pinned,
+            "content_snippet": content_snippet
         }
-        Returns a string like: "YES - snippet seems vague and user query requires detail"
-        """
-        return self.chain.invoke(metadata)
+        result = self.chain.invoke(metadata)
+        return result.strip().upper().startswith("YES")

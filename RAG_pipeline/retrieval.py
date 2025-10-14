@@ -1,4 +1,5 @@
-from haystack.nodes import EmbeddingRetriever, SentenceTransformersRanker
+from haystack import EmbeddingRetriever
+from haystack.nodes import SentenceTransformersRanker
 from typing import List
 import logging
 
@@ -13,13 +14,13 @@ class Retriever:
             document_store=self.document_store,
             embedding_model=embedding_model,
             model_format="sentence_transformers",
-            use_gpu=True
+            use_gpu=False  # Set to False for compatibility
         )
 
         # Optional reranker
         self.reranker = SentenceTransformersRanker(
             model_name_or_path="cross-encoder/ms-marco-MiniLM-L-6-v2",
-            use_gpu=True
+            use_gpu=False  # Set to False for compatibility
         )
 
     def retrieve(self, query: str, top_k: int = 20):
@@ -28,7 +29,7 @@ class Retriever:
 
     def rerank(self, query: str, retrieved_docs: List[dict], top_k_final: int = 5):
         logger.info(f"Reranking top {len(retrieved_docs)} documents for query: {query}")
-        from haystack.schema import Document
+        from haystack import Document
         haystack_docs = []
         for doc in retrieved_docs:
             content = (

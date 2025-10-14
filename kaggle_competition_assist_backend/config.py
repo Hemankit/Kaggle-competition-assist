@@ -30,6 +30,11 @@ class Config:
     DEBUG = os.getenv("FLASK_DEBUG", "True") == "True"
     SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "your-default-secret-key")
     ENV = os.getenv("FLASK_ENV", "development")
+    
+    # Logging configuration
+    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+    LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    LOG_FILE = os.path.join(LOG_DIR, "kaggle_assist.log")
 
     import json
 

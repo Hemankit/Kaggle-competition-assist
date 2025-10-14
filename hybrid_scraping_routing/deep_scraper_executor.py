@@ -27,7 +27,7 @@ class DeepScraperExecutor:
 
         for item in deep_scraped:
             content_hash = compute_content_hash(item.get("content", ""))
-            self.cache.update_cache(content_hash, deep_scraped=True)
+            self.cache.update_cache("", content_hash, deep_scraped=True)
             item["deep_scraped"] = True
             item["deep_scraped_at"] = datetime.now(timezone.utc).isoformat()
             item["content_hash"] = content_hash
@@ -64,7 +64,7 @@ class DeepScraperExecutor:
                 result = scraper([item])
                 for r in result:
                     result_hash = compute_content_hash(r.get("content", ""))
-                    self.cache.update_cache(result_hash, deep_scraped=True)
+                    self.cache.update_cache("", result_hash, deep_scraped=True)
                     r["deep_scraped"] = True
                     r["deep_scraped_at"] = datetime.now(timezone.utc).isoformat()
                     r["content_hash"] = result_hash
@@ -74,17 +74,64 @@ class DeepScraperExecutor:
                 logger.info(f"Skipping deep scrape: {item.get('title', '')}")
 
         return deep_scraped_results
+    
+    def deep_scrape_item(self, item: dict, section: str, query: str) -> dict:
+        """
+        Deep scrape a single item if the decision chain says YES.
+        Returns the deep-scraped item dict, or None if not deep scraped.
+        """
+        content_hash = compute_content_hash(item.get("content", ""))
+        cached = self.cache.get_cache(content_hash)
+        if cached and cached.get("deep_scraped"):
+            logger.info(f"Skipping cached item: {item.get('title', '')}")
+            return None
+
+        # Decision
+        decision = self.deep_scrape_decider.invoke({
+            "query": query,
+            "section": section,
+            "title": item.get("title", ""),
+            "has_image": item.get("has_image", False),
+            "pinned": item.get("pinned", False),
+            "content_snippet": item.get("content_snippet", "")
+        })
+
+        if "YES" in decision.upper():
+            logger.info(f"Deep scraping: {item.get('title', '')}")
+            # Select the correct scraper for the section
+            if section == "code":
+                result = self.notebook_scraper.deep_scrape_notebooks(query, mode="summary")
+            elif section == "discussion":
+                result = self.discussion_scraper.deep_scrape_discussion(query, mode="summary")
+            elif section == "model":
+                result = self.model_scraper.deep_scrape_models_with_llm(query, mode="summary")
+            else:
+                logger.warning(f"Unknown section for deep scrape: {section}")
+                return None
+
+            if result:
+                r = result[0]
+                result_hash = compute_content_hash(r.get("content", ""))
+                self.cache.update_cache("", result_hash, deep_scraped=True)
+                r["deep_scraped"] = True
+                r["deep_scraped_at"] = datetime.now(timezone.utc).isoformat()
+                r["content_hash"] = result_hash
+                r["metadata"] = get_section_metadata(section, r)
+                return r
+        else:
+            logger.info(f"Skipping deep scrape: {item.get('title', '')}")
+        return None
 
     def _get_scraper_and_items(self, section: str, pinned: bool):
         if section == "code":
-            items = [n for n in self.notebook_scraper.get_all_cleaned_notebooks() if n.get("pinned", False) == pinned]
+            items = [n for n in self.notebook_scraper.get_all_cleaned_notebooks() if n.get("is_pinned", False) == pinned]
             return self.notebook_scraper.deep_scrape_notebooks, items
         elif section == "discussion":
-            items = [d for d in self.discussion_scraper.load_from_json() if d.get("pinned", False) == pinned]
+            items = [d for d in self.discussion_scraper.get_all_cleaned_discussions() if d.get("is_pinned", False) == pinned]
             return self.discussion_scraper.deep_scrape_discussion, items
         elif section == "model":
-            items = [m for m in self.model_scraper.load_from_json() if m.get("pinned", False) == pinned]
-            return self.model_scraper.deep_scrape_model_section, items
+            items = [m for m in self.model_scraper.get_all_cleaned_models() if m.get("is_pinned", False) == pinned]
+            return self.model_scraper.deep_scrape_models_with_llm, items
         else:
             logger.warning(f"Unknown section: {section}")
             return None, None

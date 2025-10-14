@@ -2,16 +2,18 @@
 from typing import Any, Dict
 import asyncio
 from agents import (
-    competition_summary_agent,
-    notebook_explainer_agent,
-    discussion_helper_agent,
-    error_diagnosis_agent,
+    CompetitionSummaryAgent,
+    NotebookExplainerAgent,
+    DiscussionHelperAgent,
+    ErrorDiagnosisAgent,
     ProgressMonitorAgent
 )
 from crewai import Crew, Task
-from orchestrators import orchestrator, crewAI_orchestrator, autogen_conversational_orchestrator
-from dispatching.dispatch import dispatch_query
-from utils.preprocessing import preprocess_query
+from orchestrators.expert_orchestrator_langgraph import ExpertSystemOrchestratorLangGraph as orchestrator
+from orchestrators.reasoning_orchestrator import ReasoningOrchestrator as crewAI_orchestrator
+from orchestrators.reasoning_orchestrator import ReasoningOrchestrator as autogen_conversational_orchestrator
+from routing.intent_router import parse_user_intent
+from query_processing.preprocessing import preprocess_query
 
 # === Preprocessing ===
 def preprocessing_node(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -19,12 +21,12 @@ def preprocessing_node(state: Dict[str, Any]) -> Dict[str, Any]:
     processed = preprocess_query(original_query)
 
     state.update({
-        "cleaned_query": processed["cleaned_query"],
+        "cleaned_query": processed["cleaned"],
         "tokens": processed.get("tokens", []),
         "metadata": processed.get("metadata", {})
     })
 
-    memory = state.get("memory", {})
+    memory = state.get("memory") or {}
     past_queries = memory.get("past_queries", [])
     past_queries.append(original_query)
     memory["past_queries"] = past_queries[-10:]
@@ -40,12 +42,18 @@ def router_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     if past_queries.count(original_query) >= 3:
         state["intent"] = "meta-intervention"
-        state.setdefault("reasoning_trace", []).append(
-            f"Loop detected: '{original_query}' appeared {past_queries.count(original_query)} times. Escalating to meta-intervention."
-        )
+        reasoning_trace = state.setdefault("reasoning_trace", [])
+        if reasoning_trace is not None:
+            reasoning_trace.append(f"Loop detected: '{original_query}' appeared {past_queries.count(original_query)} times. Escalating to meta-intervention.")
+        else:
+            state["reasoning_trace"] = [f"Loop detected: '{original_query}' appeared {past_queries.count(original_query)} times. Escalating to meta-intervention."]
         return state
 
-    route_result = orchestrator.route_to_agents(original_query)
+    route_result = parse_user_intent(original_query)
+    
+    # Handle case where parse_user_intent returns None
+    if route_result is None:
+        route_result = {}
 
     structured_query = {
         "intent": route_result.get("intent", "reasoning"),
@@ -58,24 +66,40 @@ def router_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     state["structured_query"] = structured_query
     state["intent"] = structured_query["intent"]
-    state.setdefault("reasoning_trace", []).append(
-        f"Structured query generated: {structured_query}"
-    )
+    reasoning_trace = state.setdefault("reasoning_trace", [])
+    if reasoning_trace is not None:
+        reasoning_trace.append(f"Structured query generated: {structured_query}")
+    else:
+        state["reasoning_trace"] = [f"Structured query generated: {structured_query}"]
 
-    dispatch_result = dispatch_query(structured_query, memory=memory)
-    state["selected_agents"] = dispatch_result["selected_agents"]
-    state["selected_backend"] = dispatch_result["selected_backend"]
+    # Simple agent selection based on intent
+    if structured_query["intent"] in ["competition", "overview"]:
+        state["selected_agents"] = ["competition_summary"]
+        state["selected_backend"] = "langgraph"
+    elif structured_query["intent"] in ["notebook", "code", "explanation"]:
+        state["selected_agents"] = ["notebook_explainer"]
+        state["selected_backend"] = "langgraph"
+    elif structured_query["intent"] in ["discussion", "forum"]:
+        state["selected_agents"] = ["discussion_helper"]
+        state["selected_backend"] = "langgraph"
+    elif structured_query["intent"] in ["error", "debug"]:
+        state["selected_agents"] = ["error_diagnosis"]
+        state["selected_backend"] = "langgraph"
+    else:
+        state["selected_agents"] = ["competition_summary"]
+        state["selected_backend"] = "langgraph"
+    
     state.setdefault("reasoning_trace", []).extend([
-        f"Dispatched to backend: {dispatch_result['selected_backend']} with agents: {dispatch_result['selected_agents']}",
-        f"Dispatch reasoning: {dispatch_result['dispatch_reason']}"
+        f"Selected backend: {state['selected_backend']} with agents: {state['selected_agents']}",
+        f"Selection reasoning: Based on intent '{structured_query['intent']}'"
     ])
 
     return state
 
 # === Reasoning Nodes ===
 async def run_concurrent_orchestrators(user_query: str, metadata: dict):
-    crewai_task = asyncio.create_task(crewAI_orchestrator.run(user_query=user_query, metadata=metadata))
-    autogen_task = asyncio.create_task(autogen_conversational_orchestrator.run(user_query=user_query, metadata=metadata))
+    crewai_task = asyncio.create_task(crewAI_orchestrator.run({"query": user_query, "mode": "crewai"}))
+    autogen_task = asyncio.create_task(autogen_conversational_orchestrator.run({"query": user_query, "mode": "autogen"}))
 
     crew_output = await crewai_task
     autogen_output = await autogen_task
@@ -103,7 +127,7 @@ def reasoning_node(state: Dict[str, Any]) -> Dict[str, Any]:
     user_query = state.get("original_query", "")
     metadata = state.get("metadata", {})
     try:
-        result = crewAI_orchestrator.run(user_query, metadata)
+        result = crewAI_orchestrator.run({"query": user_query, "mode": "crewai"})
         state["crew_result"] = result
         state.setdefault("reasoning_trace", []).append("Multi-agent reasoning node executed.")
         state.setdefault("agent_outputs", []).append(result)
@@ -116,7 +140,7 @@ def conversational_node(state: Dict[str, Any]) -> Dict[str, Any]:
     user_query = state.get("original_query", "")
     metadata = state.get("metadata", {})
     try:
-        result = autogen_conversational_orchestrator.run(user_query, metadata)
+        result = autogen_conversational_orchestrator.run({"query": user_query, "mode": "autogen"})
         state.setdefault("agent_outputs", []).append(result)
         state.setdefault("conversation_trace", []).append("AutoGen conversational agent executed")
     except Exception as e:
@@ -133,17 +157,34 @@ def run_agent_if_intent_matches(state, valid_intents, agent, agent_name):
         state.setdefault("reasoning_trace", []).append(f"{agent_name} executed for intent: {intent}")
     return state
 
-def competition_summary_node(state): 
-    return run_agent_if_intent_matches(state, ["data", "overview"], competition_summary_agent, "CompetitionSummaryAgent")
+def run_agent_if_intent_matches(state: Dict[str, Any], target_intents: list, agent_class, agent_name: str) -> Dict[str, Any]:
+    """Helper function to run agent if intent matches"""
+    current_intent = state.get("intent", "")
+    if current_intent in target_intents or any(intent in current_intent for intent in target_intents):
+        try:
+            agent = agent_class()
+            query = state.get("cleaned_query", state.get("original_query", ""))
+            result = agent.run(query)
+            state.setdefault("agent_outputs", []).append({
+                "agent_name": agent_name, 
+                "response": result.get("response", str(result))
+            })
+            state.setdefault("reasoning_trace", []).append(f"Executed {agent_name} for intent '{current_intent}'")
+        except Exception as e:
+            state.setdefault("reasoning_trace", []).append(f"Failed to execute {agent_name}: {e}")
+    return state
 
-def notebook_explainer_node(state): 
-    return run_agent_if_intent_matches(state, ["code", "model"], notebook_explainer_agent, "NotebookExplainerAgent")
+def competition_summary_node(state: Dict[str, Any]) -> Dict[str, Any]: 
+    return run_agent_if_intent_matches(state, ["competition", "overview", "data"], CompetitionSummaryAgent, "CompetitionSummary")
 
-def discussion_helper_node(state): 
-    return run_agent_if_intent_matches(state, ["discussion"], discussion_helper_agent, "DiscussionHelperAgent")
+def notebook_explainer_node(state: Dict[str, Any]) -> Dict[str, Any]: 
+    return run_agent_if_intent_matches(state, ["notebook", "code", "model", "explanation"], NotebookExplainerAgent, "NotebookExplainer")
 
-def error_diagnosis_node(state): 
-    return run_agent_if_intent_matches(state, ["error", "bug", "troubleshooting"], error_diagnosis_agent, "ErrorDiagnosisAgent")
+def discussion_helper_node(state: Dict[str, Any]) -> Dict[str, Any]: 
+    return run_agent_if_intent_matches(state, ["discussion", "forum"], DiscussionHelperAgent, "DiscussionHelper")
+
+def error_diagnosis_node(state: Dict[str, Any]) -> Dict[str, Any]: 
+    return run_agent_if_intent_matches(state, ["error", "bug", "troubleshooting", "debug"], ErrorDiagnosisAgent, "ErrorDiagnosis")
 
 # === Memory Update ===
 def memory_update_node(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -164,7 +205,7 @@ def meta_monitor_node(state: Dict[str, Any]) -> Dict[str, Any]:
     intent_history = memory.get("intent_history", [])
 
     too_repetitive = len(past_queries) >= 3 and len(set(past_queries[-3:])) == 1
-    no_output_recently = any(len(batch) == 0 for batch in agent_outputs_log[-2:])
+    no_output_recently = any(len(batch or []) == 0 for batch in agent_outputs_log[-2:])
     switching_intents = len(set(intent_history[-3:])) > 2
 
     needs_intervention = too_repetitive or no_output_recently or switching_intents
@@ -175,7 +216,7 @@ def meta_monitor_node(state: Dict[str, Any]) -> Dict[str, Any]:
     return state
 
 def meta_intervention_node(state: Dict[str, Any]) -> Dict[str, Any]:
-    agent = ProgressMonitorAgent().get_crew_agent()
+    agent = ProgressMonitorAgent().to_crewai()
     task = Task(
         name="Meta-Intervention Analysis",
         description="Diagnose why recent runs have failed or stalled. Recommend a different approach, reasoning style, or agent mix.",
@@ -192,46 +233,7 @@ def meta_intervention_node(state: Dict[str, Any]) -> Dict[str, Any]:
         state.setdefault("reasoning_trace", []).append(f"[MetaIntervention] Failed: {e}")
     return state
 
-# === Scoring & Aggregation ===
-def scoring_node(state: Dict[str, Any]) -> Dict[str, Any]:
-    from langchain.chains import LLMChain
-    from langchain.prompts import PromptTemplate
-    from langchain.chat_models import ChatOpenAI
-
-    scoring_prompt = PromptTemplate.from_template(
-        """You are evaluating the quality of an assistant's response.
-
-        Response:
-        {response}
-
-        Rate the response on a scale of 0 to 100 based on:
-        - Relevance to the user's query
-        - Specificity and usefulness
-        - Clarity and structure
-
-        Only return a number.
-        """
-    )
-
-    scoring_chain = LLMChain(llm=ChatOpenAI(temperature=0.0), prompt=scoring_prompt)
-    scored_outputs = []
-    for output in state.get("agent_outputs", []):
-        try:
-            score_str = scoring_chain.run(response=output["response"])
-            score = int(score_str.strip())
-            output["score"] = score
-            state.setdefault("reasoning_trace", []).append(
-                f"Scored agent {output['agent_name']} with {score}/100"
-            )
-        except Exception as e:
-            output["score"] = 50
-            state.setdefault("reasoning_trace", []).append(
-                f"Scoring failed for {output['agent_name']}: {e}"
-            )
-        scored_outputs.append(output)
-
-    state["agent_outputs"] = scored_outputs
-    return state
+# === Aggregation ===
 
 def aggregation_node(state: Dict[str, Any]) -> Dict[str, Any]:
     responses = state.get("agent_outputs", [])

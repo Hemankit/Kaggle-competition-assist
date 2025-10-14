@@ -2,14 +2,14 @@ from .base_agent import BaseAgent
 from typing import Optional, Dict, Any
 
 # CrewAI
-from crewai import CrewAgent
+from crewai import Agent
 
 # AutoGen
 from autogen import ConversableAgent
 
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
-from langchain.chat_models import ChatOpenAI
+from llms.llm_loader import get_llm_from_config
 
 class TimelineCoachAgent(BaseAgent):
     def __init__(self, llm=None):
@@ -22,20 +22,25 @@ class TimelineCoachAgent(BaseAgent):
                 "and resource prioritization based on the competition length and user goals."
             )
         )
-        self.llm = llm or ChatOpenAI(model_name="gpt-4")
+        self.llm = llm or get_llm_from_config(section="reasoning_and_interaction")
         self.prompt = PromptTemplate.from_template(
             "You are a Kaggle Timeline Coach. {description}\n\nUser Query: {query}\n"
         )
         self.chain = LLMChain(llm=self.llm, prompt=self.prompt)
 
-    def run(self, query: str, context: Optional[Dict[str, Any]] = None) -> str:
-        return (
+    def run(self, query: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        response = (
             f"{self.name}: I help users structure their Kaggle competition timelines effectively.\n\n"
             f"Received query: {query}\nContext: {context}"
         )
+        return {
+            "agent_name": self.name,
+            "response": response,
+            "updated_context": context
+        }
     
-    def to_crewai(self) -> CrewAgent:
-        return CrewAgent(
+    def to_crewai(self) -> Agent:
+        return Agent(
             role="Competition Timeline Coach",
             goal="Help users create effective, phase-based timelines for Kaggle competitions — balancing deep exploration, fast iteration, and submission reliability.",
             backstory=(
@@ -44,13 +49,15 @@ class TimelineCoachAgent(BaseAgent):
                 "You coach users on EDA, baseline modeling, feature engineering, model experimentation, ensembling, and submission prep. "
                 "You're practical, realistic, and prioritize building reliable pipelines over chasing leaderboard noise."
             ),
+            llm=self.llm,  # Use Perplexity LLM
             allow_delegation=False,
             verbose=True,
             tools=[]
         )
 
     def to_autogen(self, llm_config: Optional[Dict[str, Any]] = None) -> ConversableAgent:
-        config = llm_config or {"config_list": [{"model": "gpt-4", "temperature": 0.3}]}
+        # Use Perplexity for reasoning via llm_loader config
+        config = llm_config or {"config_list": [{"model": "sonar", "temperature": 0.3}]}
 
         system_prompt = (
             "You are a Kaggle Timeline Coach. Your job is to help users structure their competition strategy using best practices from top Kaggle competitors.\n\n"

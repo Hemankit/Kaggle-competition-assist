@@ -12,7 +12,7 @@ from typing import Dict
 from query_processing.preprocessing import preprocess_query, detect_code, detect_url, detect_numbers, detect_question
 from query_processing.embedding_utils import query_embeddings
 from query_processing.section_classifier import predict_query_section
-from query_processing.intent_classifier import classify_intent
+# Intent classifier import moved to function level
 
 
 
@@ -41,7 +41,9 @@ class UserInputProcessor:
         section_method = "semantic-similarity"
 
         # Step 4: Intent classification
-        intent, intent_method = classify_intent(cleaned_query, embedding)
+        from .intent_classifier import IntentClassifier
+        classifier = IntentClassifier()
+        intent, intent_method = classifier.classify_intent(cleaned_query)
 
         # Additional metadata using preprocessing helpers
         contains_code = detect_code(query)

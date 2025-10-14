@@ -1,12 +1,14 @@
-from crewai import Crew, Task
+from crewai import Crew, Task, Agent
+from typing import Dict, Any
 from routing.intent_router import parse_user_intent
 from routing.capability_scoring import find_agents_by_subintent
 from routing.registry import AUTOGEN_AGENT_REGISTRY
-from orchestrators.orchestrator_base import BaseOrchestratorUtils
+from .orchestrator_base import BaseOrchestratorUtils
 from agents.base_agent import BaseAgent
 from autogen import GroupChat, GroupChatManager
+from llms.llm_loader import get_llm_from_config
 
-class MultiAgentReasoningOrchestrator:
+class ReasoningOrchestrator:
     def __init__(self):
         self.utils = BaseOrchestratorUtils()
         self.agent_registry = AUTOGEN_AGENT_REGISTRY
@@ -38,8 +40,7 @@ class MultiAgentReasoningOrchestrator:
         for subintent in subintents:
             matches = find_agents_by_subintent(
                 subintent=subintent,
-                reasoning_style=reasoning_style,
-                registry=self.agent_registry
+                reasoning_style=reasoning_style
             )
             for match in matches:
                 matched_agents.add(match["agent"])
@@ -57,7 +58,7 @@ class MultiAgentReasoningOrchestrator:
             tasks = []
             for agent_name in matched_agents:
                 agent_instance = self._instantiate_agent(agent_name)
-                crewai_agent = agent_instance.as_crewai_agent()
+                crewai_agent = agent_instance.to_crewai()
 
                 task = Task(
                     description=f"{self.STRATEGY_PROMPT}\n\nUser query: {user_query}",
@@ -83,12 +84,17 @@ class MultiAgentReasoningOrchestrator:
             autogen_agents = []
             for agent_name in matched_agents:
                 agent_instance = self._instantiate_agent(agent_name)
-                agent = agent_instance.as_autogen_agent()
+                agent = agent_instance.to_autogen()
                 agent.system_message += f"\n\n{self.STRATEGY_PROMPT}"
                 autogen_agents.append(agent)
 
+            # Use Perplexity for AutoGen orchestration
+            llm = get_llm_from_config(section="reasoning_and_interaction")
+            
             group_chat = GroupChat(agents=autogen_agents, messages=[], max_round=8)
-            manager = GroupChatManager(groupchat=group_chat, llm_config={"config_list": [{"model": "deepseek-v2.0-chat", "temperature": 0.3}]})
+            # Note: AutoGen GroupChatManager will use the individual agent configs
+            # which we already set to use Perplexity via llm_loader
+            manager = GroupChatManager(groupchat=group_chat, llm_config={"config_list": [{"model": "sonar", "temperature": 0.3}]})
             final_output = manager.run(user_query)
 
             return {
@@ -108,3 +114,64 @@ class MultiAgentReasoningOrchestrator:
         """
         return self.utils.get_last_execution_trace()
 
+    def run_single_agent(self, agent_name: str, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Run a single agent instead of a full crew/group"""
+        context = context or {}
+        
+        try:
+            # Get agent instance
+            agent_instance = self._instantiate_agent(agent_name)
+            
+            # Create a simple task for the single agent
+            task = Task(
+                description=f"{self.STRATEGY_PROMPT}\n\nUser query: {query}",
+                expected_output="Detailed response with best practices and reasoning steps.",
+                agent=agent_instance.to_crewai()
+            )
+            
+            # Create a crew with just this one agent and task
+            crew = Crew(
+                agents=[agent_instance.to_crewai()],
+                tasks=[task],
+                verbose=False
+            )
+            
+            result = crew.kickoff()
+            
+            return {
+                "agent_name": agent_name,
+                "response": str(result),
+                "updated_context": context
+            }
+            
+        except Exception as e:
+            return {
+                "agent_name": agent_name,
+                "error": str(e),
+                "updated_context": context
+            }
+
+    def run(self, inputs: dict) -> dict:
+        """
+        Standardized run method for orchestrator interoperability.
+        Accepts:
+            {
+                "query": "Your user query",
+                "mode": "crewai" or "autogen" (optional)
+            }
+        Returns:
+            {
+                "structured_intent": ...,
+                "selected_agents": [...],
+                "selected_mode": ...,
+                "final_response": ...,
+                "execution_trace": [...]
+            }
+        """
+        user_query = inputs.get("query", "")
+        mode = inputs.get("mode")
+
+        if not user_query:
+            return {"error": "Missing 'query' in input."}
+
+        return self.route_and_create_crew(user_query, mode)

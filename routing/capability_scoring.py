@@ -1,6 +1,6 @@
 # routing/capability_scoring.py
 
-from routing.registry import AGENT_REGISTRY
+from .registry import AGENT_CAPABILITY_REGISTRY
 from typing import List, Dict, Optional
 
 
@@ -12,7 +12,7 @@ def find_agents_by_subintent(
 ) -> List[Dict[str, float]]:
     matches = []
 
-    for agent_name, metadata in AGENT_REGISTRY.items():
+    for agent_name, metadata in AGENT_CAPABILITY_REGISTRY.items():
         score = 0.0
         explanation = []
 

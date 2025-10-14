@@ -1,22 +1,50 @@
 {
+  "default": {
+    "provider": "google",
+    "model": "gemini-2.5-flash",
+    "temperature": 0.2,
+    "comment": "Fast retrieval, routing, simple queries"
+  },
+  "code_handling": {
+    "provider": "groq",
+    "model": "llama-3.3-70b-versatile",
+    "temperature": 0.2,
+    "comment": "Groq for fast code analysis with expertise in programming"
+  },
   "deep_scraping": {
     "provider": "ollama",
-    "model": "codellama:13b",
-    "temperature": 0.1
+    "model": "codellama",
+    "temperature": 0.1,
+    "comment": "Local CodeLlama for detailed extraction (requires: ollama pull codellama)"
   },
   "scraper_decision": {
-    "provider": "groq",
-    "model": "mixtral-8x7b",
-    "temperature": 0.2
+    "provider": "google",
+    "model": "gemini-2.5-flash",
+    "temperature": 0.2,
+    "comment": "Fast routing decisions for scraping strategy"
   },
   "routing": {
     "provider": "google",
-    "model": "gemini-1.5-flash",
-    "temperature": 0.1
+    "model": "gemini-2.5-flash",
+    "temperature": 0.1,
+    "comment": "Intent detection, quick decisions"
   },
   "reasoning_and_interaction": {
-    "provider": "deepseek",
-    "model": "deepseek-v2.0-chat",
-    "temperature": 0.3
+    "provider": "perplexity",
+    "model": "sonar",
+    "temperature": 0.3,
+    "comment": "Perplexity Sonar for deep reasoning + search-augmented context (PERFECT for multi-agent orchestration)"
+  },
+  "retrieval_agents": {
+    "provider": "google",
+    "model": "gemini-2.5-flash",
+    "temperature": 0.2,
+    "comment": "Discussion/notebook/data summarization - fast and accurate"
+  },
+  "aggregation": {
+    "provider": "google",
+    "model": "gemini-2.5-flash",
+    "temperature": 0.1,
+    "comment": "Fast synthesis of multi-agent responses"
   }
 }

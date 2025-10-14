@@ -2,37 +2,42 @@ from .base_agent import BaseAgent
 from typing import Optional, Dict, Any
 
 # For CrewAI
-from crewai import CrewAgent
+from crewai import Agent
 
 # For AutoGen
 from autogen import ConversableAgent
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
-from langchain.chat_models import ChatOpenAI
+from llms.llm_loader import get_llm_from_config
 
 class MultiHopReasoningAgent(BaseAgent):
     def __init__(self, llm=None):
-        super().__init__(name)
-        self.description = (
+        description = (
             "An expert reasoning agent that performs multi-step, multi-source synthesis. It answers complex Kaggle "
             "competition queries by combining insights from notebooks, metadata, discussion posts, and previous agent outputs. "
             "It is skilled in chaining reasoning steps, identifying dependencies, and drawing conclusions from scattered signals."
         )
-        self.llm = llm or ChatOpenAI(model_name="gpt-4")
+        super().__init__("MultiHopReasoningAgent", description)
+        self.llm = llm or get_llm_from_config(section="reasoning_and_interaction")
         self.prompt = PromptTemplate.from_template(
             "You are a multi-hop reasoning agent. {description}\n\nUser Query: {query}\nContext: {context}\n"
         )
         self.chain = LLMChain(llm=self.llm, prompt=self.prompt)
 
 
-    def run(self, query: str, context: Optional[Dict[str, Any]] = None) -> str:
-        return (
+    def run(self, query: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        response = (
             f"{self.name}: I perform multi-step reasoning across multiple sources, integrating insights from "
             f"agents or documents to solve complex queries.\n\nReceived query: {query}\nContext: {context}"
         )
+        return {
+            "agent_name": self.name,
+            "response": response,
+            "updated_context": context
+        }
 
-    def to_crewai(self) -> CrewAgent:
-        return CrewAgent(
+    def to_crewai(self) -> Agent:
+        return Agent(
             role="Multihop Reasoning Expert",
             goal=(
                 "Answer complex or layered user questions by synthesizing evidence from multiple sources — including "
@@ -43,13 +48,15 @@ class MultiHopReasoningAgent(BaseAgent):
                 "chaining together logic from multiple domains. You are called upon when simpler agents can't fully "
                 "resolve a query using isolated context."
             ),
+            llm=self.llm,  # Use Perplexity LLM
             allow_delegation=True,
             verbose=True,
             tools=[],
         )
 
     def to_autogen(self, llm_config: Optional[Dict[str, Any]] = None) -> ConversableAgent:
-        config = llm_config or {"config_list": [{"model": "gpt-4", "temperature": 0.3}]}
+        # Use Perplexity for reasoning via llm_loader config
+        config = llm_config or {"config_list": [{"model": "sonar", "temperature": 0.3}]}
         return ConversableAgent(
             name=self.name,
             llm_config=config,

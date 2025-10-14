@@ -1,101 +1,62 @@
 import React, { createContext, useContext, useState } from 'react';
 import axios from 'axios';
 
-// Create the context
 const ChatContext = createContext();
 
-// Custom hook for easier access
-export const useChat = () => useContext(ChatContext);
-
-// Provider component
 export const ChatProvider = ({ children }) => {
-  const [username, setUsername] = useState('');
-  const [competitionName, setCompetitionName] = useState('');
-  const [query, setQuery] = useState('');
   const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Placeholder for saved chats (can later be fetched from backend/localStorage)
-  const [savedChats, setSavedChats] = useState([]);
-
-  const sendMessage = async () => {
-    if (!query.trim()) return;
-
-    const userMessage = {
-      sender: 'User',
-      content: query,
-      timestamp: Date.now(),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setQuery('');
+  const submitQuery = async (userQuery, debug = false) => {
     setIsLoading(true);
+    setError(null);
 
     try {
-      const res = await axios.post('http://localhost:5000/multi-agent/', {
-        query,
-        query_type: 'reasoning', // or 'expert' depending on routing logic
+      // Append user message
+      setMessages((prev) => [...prev, { role: 'user', content: userQuery }]);
+
+      const response = await axios.post('http://localhost:5000/component-orchestrator/', {
+        query: userQuery,
+        query_type: 'reasoning', // you can make this dynamic if needed
+        debug,
       });
 
-      const assistantMessage = {
-        sender: 'Assistant',
-        content: res.data?.response?.text || 'No response',
-        timestamp: Date.now(),
-      };
+      const result = response.data;
 
-      setMessages(prev => [...prev, assistantMessage]);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        const reply = result.final_response || 'No response.';
+        setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
+
+        if (debug && result.execution_trace) {
+          console.log('Trace (dev only):', result.execution_trace);
+        }
+      }
     } catch (err) {
-      const errorMessage = {
-        sender: 'Assistant',
-        content: 'Error: Unable to fetch response.',
-        timestamp: Date.now(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      console.error('Query submission error:', err);
+      setError('Something went wrong while processing your query.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Placeholder methods for future logic (sidebar integration)
-  const selectChat = (chatId) => {
-    console.log("Selected chat:", chatId);
-    // Load selected chat messages into `messages`
-    // For now, mock behavior:
-    const chat = savedChats.find(chat => chat.id === chatId);
-    if (chat) {
-      setMessages(chat.messages || []);
-    }
-  };
-
-  const newChat = () => {
-    const newChatObj = {
-      id: Date.now(),
-      title: `Chat ${savedChats.length + 1}`,
-      messages: [],
-    };
-    setSavedChats(prev => [...prev, newChatObj]);
-    setMessages([]); // Start with empty chat
-  };
-
   return (
     <ChatContext.Provider
       value={{
-        username,
-        setUsername,
-        competitionName,
-        setCompetitionName,
-        query,
-        setQuery,
         messages,
-        setMessages,
+        input,
+        setInput,
         isLoading,
-        sendMessage,
-        savedChats,
-        selectChat,
-        newChat,
+        error,
+        submitQuery,
       }}
     >
       {children}
     </ChatContext.Provider>
   );
 };
+
+export const useChat = () => useContext(ChatContext);

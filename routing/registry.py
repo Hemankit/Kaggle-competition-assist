@@ -7,6 +7,8 @@ from agents import (
     ErrorDiagnosisAgent,
     CodeFeedbackAgent,
     ProgressMonitorAgent,
+    IdeaInitiatorAgent,
+    CommunityEngagementAgent,
 )
 from typing import Optional
 
@@ -60,6 +62,18 @@ AGENT_CAPABILITY_REGISTRY = {
         "reasoning_styles": ["diagnostic", "stepwise"],
         "tags": ["debugging", "errors"],
     },
+    "idea_initiator": {
+        "agent_class": IdeaInitiatorAgent,
+        "capabilities": ["idea_generation", "strategy_recommendation", "approach_suggestion"],
+        "reasoning_styles": ["strategic", "creative", "analytical"],
+        "tags": ["brainstorming", "starter", "ideas", "strategy"],
+    },
+    "community_engagement": {
+        "agent_class": CommunityEngagementAgent,
+        "capabilities": ["track_engagement", "analyze_feedback", "extract_insights", "prioritize_suggestions", "update_strategy"],
+        "reasoning_styles": ["analytical", "strategic", "synthesis"],
+        "tags": ["community", "discussions", "feedback", "crowd_wisdom", "engagement"],
+    },
 }
 
 # === Registry for CrewAI (Autogen-style multi-agent reasoning orchestration) === #
@@ -68,6 +82,8 @@ AUTOGEN_AGENT_REGISTRY = {
     "error_diagnosis": AGENT_CAPABILITY_REGISTRY["error_diagnosis"],
     "code_feedback": AGENT_CAPABILITY_REGISTRY["code_feedback"],
     "progress_monitor": AGENT_CAPABILITY_REGISTRY["progress_monitor"],
+    "idea_initiator": AGENT_CAPABILITY_REGISTRY["idea_initiator"],
+    "community_engagement": AGENT_CAPABILITY_REGISTRY["community_engagement"],
 }
 
 def get_agent(name: str, mode: str = "default", llm_config: Optional[dict] = None):

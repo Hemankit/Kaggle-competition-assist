@@ -22,3 +22,10 @@ class SectionMetadataLoader:
         else:
             logger.warning(f"No metadata available for unknown section: {section}")
             return []
+
+# Create a global instance and expose the function
+_metadata_loader = SectionMetadataLoader()
+
+def get_section_metadata(section: str, item=None):
+    """Function interface for get_section_metadata"""
+    return _metadata_loader.get_section_metadata(section)

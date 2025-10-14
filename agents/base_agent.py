@@ -7,7 +7,7 @@ class BaseAgent(ABC):
     Enforces a common interface across agents.
     """
 
-    def __init__(self, name: str, description: str, tools: Dict[str, Any] = None):
+    def __init__(self, name: str, description: str = "", tools: Dict[str, Any] = None):
         self.name = name
         self.description = description
         self.tools = tools or {}

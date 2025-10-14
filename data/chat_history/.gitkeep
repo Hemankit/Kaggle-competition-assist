@@ -1,0 +1,5 @@
+# Chat history storage
+# This directory stores persistent chat conversations
+# Each chat is saved as a JSON file with ID, title, messages, and timestamp
+
+

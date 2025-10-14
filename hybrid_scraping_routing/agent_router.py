@@ -8,8 +8,8 @@ from scraper.notebook_scraper_v2 import NotebookScraperV2
 from scraper.model_scraper_v2 import ModelScraperV2
 from scraper.discussion_scraper_v2 import DiscussionScraperV2
 from scraper.screenshots_handler import extract_text_from_posts
-from scraper.ai_scrape_config import AIScrapeConfig
 from scraper.scrape_handlers import scrapegraphai_handler
+from scraper.ai_scrape_config import AIScrapeConfig
 
 from hybrid_scraping_routing.redis_cache import RedisCache
 from hybrid_scraping_routing.scraping_decider import ScrapingDecider
@@ -85,13 +85,17 @@ class HybridScrapingAgent:
         result = scraper_retriever[section]()
         return result
     
+    # ...existing code...
+
+    # ...existing code...
+
     def run(self, inputs: Dict[str, Any]) -> List[Dict[str, Any]]:
         query = inputs.get("query")
         section = inputs.get("section")
         predicted_section = inputs.get("predicted_section", section)
         logger.info(f"[Agent] Running hybrid scraping agent for query='{query}', section='{section}'")
 
-        # api based sections
+        # API-based sections
         if section in ["leaderboard", "data"]:
             result = self.route_to_retrieval_method(section, predicted_section)
             return [{"section": section, "content": result}]
@@ -110,16 +114,38 @@ class HybridScrapingAgent:
             except Exception as e:
                 logger.error(f"Error during scraping for section '{section}': {e}")
                 scrape_results = []
-            # Ensure scrape_results is a list
             if not isinstance(scrape_results, list):
                 scrape_results = [scrape_results]
 
-        # Deep scraping
-        pinned_results = self.deep_scraper.deep_scraping_pinned(query, section)
-        not_pinned_results = self.deep_scraper.deep_scraping_not_pinned(query, section, self.llm)
-        all_results = scrape_results + pinned_results + not_pinned_results
+        # Item-level deep scrape decision
+        deep_scrape_items = []
+        shallow_items = []
+        for item in scrape_results:
+            # Extract metadata with safe defaults
+            title = getattr(item, "title", "")
+            has_image = getattr(item, "has_image", False)
+            pinned = getattr(item, "pinned", False)
+            content_snippet = getattr(item, "snippet", "") or getattr(item, "content_snippet", "")
+            if self.scrape_decider.should_deep_scrape(
+                query, section, title=title, has_image=has_image, pinned=pinned, content_snippet=content_snippet
+            ):
+                deep_scrape_items.append(item)
+            else:
+                shallow_items.append(item)
+
+        # Deep scrape only the selected items
+        deep_scraped_results = []
+        for item in deep_scrape_items:
+            # You may need to implement a method to deep scrape a single item
+            deep_result = self.deep_scraper.deep_scrape_item(item, section, query)
+            if deep_result:
+                deep_scraped_results.append(deep_result)
+
+        all_results = shallow_items + deep_scraped_results
+
         structured_results = self.result_structurer.structure_results(all_results, section)
 
         if structured_results and hasattr(structured_results[0], 'dict'):
             return [r.dict() for r in structured_results]
         return structured_results
+# ...existing code...

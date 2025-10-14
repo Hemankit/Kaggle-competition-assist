@@ -49,13 +49,11 @@ class BaseOrchestratorUtils:
         self,
         subintent: str,
         reasoning_style: Optional[str] = None,
-        registry: Dict[str, Any] = AGENT_CAPABILITY_REGISTRY,
         min_score: float = 0.3
     ):
         return find_agents_by_subintent(
             subintent=subintent,
             reasoning_style=reasoning_style,
-            registry=registry,
             min_score_threshold=min_score
         )
 

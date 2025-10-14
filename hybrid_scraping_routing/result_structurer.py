@@ -50,7 +50,7 @@ class ResultStructurer:
             raw_for_hash = f"{result.get('title', '')}|{result.get('url', '')}|{content}"
             content_hash = compute_content_hash(raw_for_hash)
 
-            cached_data = self.cache.get_cache(content_hash)
+            cached_data = self.cache.get_cache("", content_hash)
             deep_scraped = cached_data.get("deep_scraped", False) if cached_data else False
             deep_scraped_at = cached_data.get("deep_scraped_at") if cached_data else None
 
@@ -101,6 +101,6 @@ class ResultStructurer:
 
             # If this result is newly deep-scraped, update cache
             if result.get("deep_scraped", False) and not deep_scraped:
-                self.cache.update_cache(content_hash, deep_scraped=True)
+                self.cache.update_cache("", content_hash, deep_scraped=True)
 
         return structured_results

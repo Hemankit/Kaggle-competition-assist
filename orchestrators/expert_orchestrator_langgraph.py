@@ -3,51 +3,55 @@
 import json
 from typing import Dict, Any, Optional, List
 
-from langchain.chains.router import RouterChain
-from langchain_community.chat_models import ChatHuggingFace
+# from langchain.chains.router import RouterChain  # Not available in current version
+# from langchain_community.chat_models import ChatHuggingFace  # Not needed
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 
-from llms.gemini_llm import ChatGoogleGenerativeAI
-from routing.intent_router import MULTI_PROMPT_ROUTER_TEMPLATE
-from routing.registry import AGENT_REGISTRY
-from workflows.graph_workflow import compiled_graph
+# from langchain_google_genai import ChatGoogleGenerativeAI  # Temporarily disabled due to metaclass conflict
+from routing.registry import AGENT_CAPABILITY_REGISTRY
+# from workflows.graph_workflow import compiled_graph  # Commented out to avoid circular import
 from dotenv import load_dotenv
 load_dotenv()
 
 class ExpertSystemOrchestratorLangGraph:
     def __init__(self):
-        self.routing_llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro", temperature=0.2)
+        # Use Perplexity for reasoning and routing
+        from llms.llm_loader import get_llm_from_config
+        self.routing_llm = get_llm_from_config(section="reasoning_and_interaction")
 
-        # Dynamically generate destinations from AGENT_REGISTRY
+        # Dynamically generate destinations from AGENT_CAPABILITY_REGISTRY
         self.destinations = {
             agent_name: {
-                "name": agent_obj.get_agent_id(),
-                "description": agent_obj.get_description(),
-                "chain": agent_obj
+                "name": agent_name,
+                "description": agent_obj.get("description", ""),
+                "chain": agent_obj.get("agent_class")
             }
-            for agent_name, agent_obj in AGENT_REGISTRY.items()
+            for agent_name, agent_obj in AGENT_CAPABILITY_REGISTRY.items()
         }
 
         self.destination_chains = {
             key: value["chain"] for key, value in self.destinations.items()
         }
 
-        router_prompt = PromptTemplate.from_template(MULTI_PROMPT_ROUTER_TEMPLATE)
+        # Simple router prompt template
+        router_prompt = PromptTemplate.from_template("""
+Given the user query, select the most appropriate agent from the available options:
 
-        self.router_chain = RouterChain.from_names_and_descriptions(
-            names_and_descriptions=[
-                (v["name"], v["description"]) for v in self.destinations.values()
-            ],
-            llm=self.routing_llm,
-            prompt=router_prompt
-        )
+Available agents:
+{names_and_descriptions}
 
+Query: {input}
+
+Select the most appropriate agent name:
+""")
+
+        # Simplified router - just use a basic LLM chain for routing
+        self.router_chain = self.routing_llm
+
+        # Use Perplexity for aggregation (reasoning + search-augmented context)
         self.aggregation_chain = LLMChain(
-            llm=ChatHuggingFace(
-                repo_id="microsoft/phi-3-medium-128k-instruct",
-                temperature=0.2
-            ),
+            llm=self.routing_llm,  # Use the same Perplexity LLM for aggregation
             prompt=PromptTemplate.from_template(
                 """
                 You are a smart AI orchestrator. Several expert agents have responded to a user's question.
@@ -64,6 +68,8 @@ class ExpertSystemOrchestratorLangGraph:
             )
         )
 
+        # Import compiled_graph lazily to avoid circular imports
+        from workflows.graph_workflow import compiled_graph
         self.graph = compiled_graph
         self.last_execution_trace = []  # Stores the last execution trace (list of activated nodes)
 
@@ -116,7 +122,7 @@ A:
         return structured_query
 
     def explain_agent_routing(self, structured_query: Dict[str, Any]) -> List[str]:
-        from routing.capability_scoring import find_agents_by_subintent
+        from ..routing.capability_scoring import find_agents_by_subintent
 
         subintents = structured_query.get("sub_intents", [])
         style = structured_query.get("reasoning_style")
@@ -137,15 +143,24 @@ A:
 
     def handle_query(self, user_query: str, debug: bool = False) -> str:
         initial_state = {"original_query": user_query}
-        # If debug, capture intermediate steps for execution trace
-        final_state = self.graph.invoke(initial_state, return_intermediate_steps=debug)
+        # Remove return_intermediate_steps parameter (not supported in newer LangGraph versions)
+        final_state = self.graph.invoke(initial_state)
+        
         if debug:
-            # Expect final_state to be a dict with 'intermediate_steps' if debug=True
-            # Otherwise, fallback to just returning final_state
-            if isinstance(final_state, dict) and "intermediate_steps" in final_state:
-                self.last_execution_trace = [step["node"] for step in final_state["intermediate_steps"] if "node" in step]
-            else:
+            # For debug mode, use stream to capture intermediate steps
+            try:
+                # Use stream with debug mode to capture intermediate steps
+                stream_results = list(self.graph.stream(initial_state, stream_mode="debug"))
                 self.last_execution_trace = []
+                
+                for mode, data in stream_results:
+                    if mode == "debug" and isinstance(data, dict) and "node" in data:
+                        self.last_execution_trace.append(data["node"])
+            except Exception as e:
+                # Fallback if streaming fails
+                print(f"Debug streaming failed: {e}")
+                self.last_execution_trace = []
+            
             return final_state
         else:
             self.last_execution_trace = []
@@ -164,5 +179,55 @@ A:
         result = self.handle_query(user_query, debug=True)
         trace = self.get_last_execution_trace()
         return {"result": result, "execution_trace": trace}
+    
+    
 
+    def run(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Standardized run method to be used by orchestrators.
+        Executes the LangGraph workflow with optional debug mode.
+        Returns final response and optionally the execution trace.
+        """
+        user_query = inputs.get("query", "")
+        debug = inputs.get("debug", False)
+        if not user_query:
+            return {"error": "Missing 'query' in input."}
 
+        final_output = self.handle_query(user_query, debug=debug)
+        if debug:
+            return {
+                "result": final_output,
+                "execution_trace": self.get_last_execution_trace()
+            }
+
+        return {
+            "result": final_output
+        }
+
+    def run_single_agent(self, agent_name: str, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Run a single agent using LangGraph workflow"""
+        context = context or {}
+        
+        try:
+            # Get agent instance from registry
+            if agent_name not in AGENT_CAPABILITY_REGISTRY:
+                raise ValueError(f"Agent '{agent_name}' not found in registry")
+            
+            agent_class = AGENT_CAPABILITY_REGISTRY[agent_name]["agent_class"]
+            agent_instance = agent_class()
+            
+            # Execute agent directly (since we're running single agent, not full workflow)
+            result = agent_instance.run(query, context)
+            
+            return {
+                "agent_name": agent_name,
+                "response": result.get("response", str(result)),
+                "updated_context": result.get("updated_context", context)
+            }
+            
+        except Exception as e:
+            return {
+                "agent_name": agent_name,
+                "error": str(e),
+                "updated_context": context
+            }

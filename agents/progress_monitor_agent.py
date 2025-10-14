@@ -1,8 +1,8 @@
-from agents.base_agent import BaseAgent
+from .base_agent import BaseAgent
 from typing import Dict, Any, Optional
 
 # CrewAI
-from crewai import CrewAgent
+from crewai import Agent as CrewAgent
 
 # AutoGen
 from autogen import ConversableAgent
@@ -10,7 +10,7 @@ from autogen import ConversableAgent
 # LLM support
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
-from langchain.chat_models import ChatOpenAI
+from llms.llm_loader import get_llm_from_config
 
 progress_monitor_prompt = """
 You are a strategic oversight agent monitoring user progress in a Kaggle competition.
@@ -33,7 +33,7 @@ class StrategicMonitorAgent(BaseAgent):
                 "flags strategic risks (like poor validation or rushed modeling), and routes targeted feedback to other agents."
             )
         )
-        self.llm = llm or ChatOpenAI(model_name="gpt-4")
+        self.llm = llm or get_llm_from_config(section="reasoning_and_interaction")
         self.prompt = PromptTemplate.from_template(progress_monitor_prompt)
         self.chain = LLMChain(llm=self.llm, prompt=self.prompt)
 
@@ -55,13 +55,15 @@ class StrategicMonitorAgent(BaseAgent):
                 "You're responsible for ensuring the user follows a robust strategy throughout the Kaggle competition lifecycle. "
                 "You identify skipped phases, misaligned priorities, or bad modeling practices and route alerts to relevant expert agents for action."
             ),
+            llm=self.llm,  # Use Perplexity LLM
             allow_delegation=True,
             verbose=True,
             tools=[]
         )
 
     def to_autogen(self, llm_config: Optional[Dict[str, Any]] = None) -> ConversableAgent:
-        config = llm_config or {"config_list": [{"model": "gpt-4", "temperature": 0.2}]}
+        # Use Perplexity for reasoning via llm_loader config
+        config = llm_config or {"config_list": [{"model": "sonar", "api_key": None}]}  # Perplexity handled by llm_loader
         return ConversableAgent(
             name=self.name,
             llm_config=config,

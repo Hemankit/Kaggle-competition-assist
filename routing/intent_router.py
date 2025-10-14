@@ -6,8 +6,8 @@ from langchain_core.runnables import Runnable
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.language_models.chat_models import BaseChatModel
 
-from routing.capability_scoring import find_agents_by_subintent
-from llms.llm_loader import get_llm_from_config # Optional: central LLM fetch
+from .capability_scoring import find_agents_by_subintent
+from llms.llm_loader import get_llm_from_config  # Optional: central LLM fetch
 
 # === Prompt ===
 ROUTER_PROMPT = PromptTemplate.from_template("""
@@ -37,7 +37,7 @@ def parse_user_intent(query: str, llm: BaseChatModel = None) -> Dict[str, Any]:
     If no LLM is passed, fallback to default router model.
     Adds recommended_mode based on reasoning style and sub-intents.
     """
-    llm = llm or get_llm_from_config()
+    llm = llm or get_llm_from_config("default")
     chain = build_router_chain(llm)
     parsed = chain.invoke({"query": query})
 
