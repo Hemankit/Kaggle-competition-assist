@@ -20,7 +20,7 @@ langgraph==0.0.26
 
 # Vector Database & RAG
 chromadb==0.4.22
-sentence-transformers==2.5.1
+sentence-transformers==2.6.0  # Updated for langchain-huggingface compatibility
 
 # Web Scraping
 playwright==1.41.0
