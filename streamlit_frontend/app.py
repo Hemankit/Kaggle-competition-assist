@@ -148,8 +148,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Backend configuration
-BACKEND_URL = "http://localhost:5000"
+# Backend configuration - Auto-detect environment
+# In production (Nginx), backend is accessible at /api
+# In development, backend runs on localhost:5000
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:5000")
 
 # Chat storage directory
 CHAT_STORAGE_DIR = "data/chat_history"

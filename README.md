@@ -177,20 +177,33 @@ Kaggle-competition-assist/
 
 ### **AWS EC2 (Recommended)**
 
-Complete guide: [`docs/AWS_DEPLOYMENT_GUIDE.md`](docs/AWS_DEPLOYMENT_GUIDE.md)
+**Just created an AWS instance?** Start here: [`NEXT_STEPS_AFTER_AWS_INSTANCE.md`](NEXT_STEPS_AFTER_AWS_INSTANCE.md)
 
-**Quick deploy:**
+**Quick References:**
+- 🎯 [`DEPLOYMENT_QUICK_GUIDE.md`](DEPLOYMENT_QUICK_GUIDE.md) - 30-minute guide
+- ✅ [`DEPLOYMENT_CHECKLIST_PRINTABLE.md`](DEPLOYMENT_CHECKLIST_PRINTABLE.md) - Print & follow
+- 🧪 [`DEPLOYMENT_TESTING_CHECKLIST.md`](DEPLOYMENT_TESTING_CHECKLIST.md) - Comprehensive testing
+
+**Automated Scripts:**
+- `deployment_script.sh` - One-command setup
+- `setup_services.sh` - Service configuration
+- `transfer_env_to_ec2.ps1` - Transfer .env (Windows)
+
+**Complete guide:** [`docs/AWS_DEPLOYMENT_GUIDE.md`](docs/AWS_DEPLOYMENT_GUIDE.md)
+
+**Quick deploy (30 minutes):**
 ```bash
-# 1. Launch t2.medium Ubuntu instance
+# 1. Launch t3.micro Ubuntu instance (FREE tier!)
 # 2. SSH in and run:
-git clone https://github.com/YOUR-USERNAME/Kaggle-competition-assist.git
-cd Kaggle-competition-assist
-./deploy.sh  # Follow prompts
+wget https://raw.githubusercontent.com/YOUR-USERNAME/Kaggle-competition-assist/main/deployment_script.sh
+chmod +x deployment_script.sh
+./deployment_script.sh
 
-# 3. Access at http://YOUR-EC2-IP
+# 3. Transfer .env, then:
+./setup_services.sh
+
+# 4. Access at http://YOUR-EC2-IP
 ```
-
-**30-minute checklist:** [`docs/DEPLOYMENT_CHECKLIST.md`](docs/DEPLOYMENT_CHECKLIST.md)
 
 ---
 
