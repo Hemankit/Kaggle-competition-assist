@@ -1,1 +1,0 @@
-"""initializes access to the Kaggle API and sets up the environment for the package."""
