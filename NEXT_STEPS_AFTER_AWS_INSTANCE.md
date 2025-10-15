@@ -68,14 +68,15 @@ Go to https://github.com/YOUR-USERNAME/Kaggle-competition-assist and confirm fil
 
 ```powershell
 # On Windows PowerShell
-cd path\to\your\key\file
+# Navigate to the folder containing your .pem key (usually Downloads)
+cd C:\Users\heman\Downloads
 
-# Fix permissions (Windows)
-icacls your-key.pem /inheritance:r
-icacls your-key.pem /grant:r "%username%":"(R)"
+# Fix permissions (Windows) - replace with your actual key filename
+icacls "Key__2__Success.pem" /inheritance:r
+icacls "Key__2__Success.pem" /grant:r "%username%":"(R)"
 
-# Connect (replace with YOUR EC2 IP)
-ssh -i your-key.pem ubuntu@YOUR-EC2-IP
+# Connect (replace with YOUR EC2 IP and your actual key filename)
+ssh -i Key__2__Success.pem ubuntu@YOUR-EC2-IP
 ```
 
 **You should see:** `ubuntu@ip-xxx-xxx-xxx-xxx:~$`
