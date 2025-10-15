@@ -6,7 +6,7 @@ gunicorn==21.2.0
 # LangChain & LLMs
 langchain==0.1.9
 langchain-community==0.0.24
-langchain-core==0.1.27
+langchain-core==0.1.52  # Updated for langchain-huggingface compatibility
 langchain-google-genai==0.0.11
 langchain-groq==0.0.1
 langchain-huggingface==0.0.1
