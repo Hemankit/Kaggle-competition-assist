@@ -73,7 +73,7 @@ cd C:\Users\heman\Downloads
 
 # Fix permissions (Windows) - replace with your actual key filename
 icacls "Key__2__Success.pem" /inheritance:r
-icacls "Key__2__Success.pem" /grant:r "%username%":"(R)"
+icacls "Key__2__Success.pem" /grant:r "heman:(R)"
 
 # Connect (replace with YOUR EC2 IP and your actual key filename)
 ssh -i Key__2__Success.pem ubuntu@YOUR-EC2-IP

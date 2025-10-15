@@ -41,7 +41,8 @@ if [ -d "Kaggle-competition-assist" ]; then
     cd Kaggle-competition-assist
     git pull origin main
 else
-    git clone https://github.com/YOUR-USERNAME/Kaggle-competition-assist.git
+    # Replace YOUR-GITHUB-USERNAME with your actual GitHub username
+    git clone https://github.com/Hemankit/Kaggle-competition-assist.git
     cd Kaggle-competition-assist
 fi
 
