@@ -2739,54 +2739,28 @@ Unable to fetch discussions at this time.
                 elif response_type == "getting_started":
                     # Handle "how to get started" queries intelligently
                     print(f"[DEBUG] Handling getting_started query for {competition_slug}")
-                    if AGENT_AVAILABLE and CHROMADB_AVAILABLE and chromadb_pipeline:
+                    if AGENT_AVAILABLE:
                         try:
-                            # Get overview and notebook context
-                            overview_results = chromadb_pipeline.retriever._get_collection().query(
-                                query_texts=[f"getting started with {competition_slug}"],
-                                n_results=5,
-                                where={
-                                    "$and": [
-                                        {"competition_slug": competition_slug},
-                                        {"section": "overview"}
-                                    ]
-                                }
-                            )
-                            
-                            notebook_context = chromadb_pipeline.retriever.retrieve(
-                                f"beginner friendly starter approaches for {competition_slug}",
-                                top_k=3
-                            )
-                            
-                            context_str = ""
-                            if overview_results and overview_results['documents'] and overview_results['documents'][0]:
-                                context_str = "Competition Overview:\n" + "\n".join([
-                                    doc for doc in overview_results['documents'][0][:2]
-                                    if doc and len(doc) > 50
-                                ])
-                            
-                            if notebook_context:
-                                context_str += "\n\nCommon Starting Approaches:\n" + "\n".join([
-                                    f"- {doc.get('content', '')[:200]}"
-                                    for doc in notebook_context[:2]
-                                ])
-                            
                             llm = get_llm_from_config(section="retrieval_agents")
                             agent = CompetitionSummaryAgent(llm=llm)
                             
-                            # Build content from context
-                            content = f"""Getting Started with {competition_name}
-User Query: {query}
+                            # Build content with competition-specific guidance
+                            content = f"""Getting Started Guide for {competition_name}
 
-Competition Information:
-{context_str if context_str else 'Titanic - Machine Learning from Disaster. A beginner-friendly binary classification competition to predict passenger survival.'}
+User's Question: {query}
 
-Guide the user through:
-- Specific first steps with file names (train.csv, test.csv)
-- Concrete baseline to beat (e.g., gender-only model gets ~78% accuracy)
-- 2-3 starter features to focus on (Sex, Pclass, Age)
-- Quick wins to build momentum
-- Encouraging, competition-specific advice"""
+This is the Titanic competition - a binary classification problem to predict passenger survival.
+
+Provide a comprehensive getting started guide that includes:
+
+1. **First Steps**: Specific actions (e.g., "Download and load train.csv (891 rows)")
+2. **Data Familiarization**: Key features to examine (Age, Sex, Pclass, missing values in Cabin/Age)
+3. **Baseline Strategy**: Simple starting point (e.g., "Gender-only model achieves ~78% accuracy - your first goal is to beat this")
+4. **Initial Features**: 2-3 features to focus on first (Sex, Pclass, Age)
+5. **Quick Wins**: What will give immediate results
+6. **Learning Path**: Suggested progression for beginners
+
+Make it specific, actionable, and encouraging. Reference actual file names, baseline benchmarks, and concrete next steps."""
                             
                             result = agent.summarize_sections(
                                 sections=[{"content": content, "title": "Getting Started"}],
