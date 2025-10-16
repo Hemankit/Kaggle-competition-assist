@@ -1281,7 +1281,7 @@ def handle_component_query():
             response_type = "community"
         elif any(word in query_lower for word in ['notebook', 'code', 'kernel', 'solution', 'example', 'implementation', 'top notebook', 'best notebook', 'winning solution', 'popular approach']):
             response_type = "notebooks"
-        elif any(word in query_lower for word in ['evaluation', 'metric', 'scoring', 'score', 'how is it scored', 'judged', 'judging', 'submission format', 'submission file', 'submit', 'how to submit']):
+        elif any(word in query_lower for word in ['evaluation', 'evaluate', 'evaluated', 'metric', 'scoring', 'score', 'how is it scored', 'judged', 'judging', 'submission', 'submit']):
             response_type = "evaluation"
         elif any(word in query_lower for word in ['data', 'dataset', 'features', 'columns', 'what data', 'file', 'files', 'csv', 'json', 'train.csv', 'test.csv', 'size', 'big', 'how big', 'download']):
             response_type = "data_analysis"
