@@ -1449,21 +1449,21 @@ def handle_component_query():
                                     return [{"content": detailed_evaluation}]
                                 agent.fetch_sections = mock_fetch
                             
-                            # Prepare query
-                            query_dict = {
-                                "cleaned_query": f"Explain the evaluation metric for {competition_name}",
-                                "original_query": query,
-                                "metadata": {
-                                    "user_level": "intermediate",
-                                    "tone": "helpful",
-                                    "competition": competition_name,
-                                    "metric": eval_metric
-                                }
+                            # Prepare sections for summarization (consolidate into one response)
+                            sections = [{
+                                "content": detailed_evaluation,
+                                "title": f"Evaluation for {competition_name}"
+                            }]
+                            
+                            metadata = {
+                                "user_level": "intermediate",
+                                "tone": "helpful",
+                                "competition": competition_name,
+                                "metric": eval_metric
                             }
                             
-                            # Run agent analysis
-                            result = agent.run(query_dict)
-                            agent_response = result.get('response', '')
+                            # Use summarize_sections to avoid repetition
+                            agent_response = agent.summarize_sections(sections, metadata)
                             
                             print(f"[DEBUG] Agent response length: {len(agent_response)} chars")
                             
@@ -3206,21 +3206,21 @@ Your query suggests you're looking for guidance on this Kaggle competition. This
                         return [{"content": detailed_evaluation}]
                     agent.fetch_sections = mock_fetch
                     
-                    # Prepare query
-                    query_dict = {
-                        "cleaned_query": f"Explain the evaluation metric for {competition_name}",
-                        "original_query": query,
-                        "metadata": {
-                            "user_level": "intermediate",
-                            "tone": "helpful",
-                            "competition": competition_name,
-                            "metric": eval_metric
-                        }
+                    # Prepare sections for summarization (consolidate into one response)
+                    sections = [{
+                        "content": detailed_evaluation,
+                        "title": f"Evaluation for {competition_name}"
+                    }]
+                    
+                    metadata = {
+                        "user_level": "intermediate",
+                        "tone": "helpful",
+                        "competition": competition_name,
+                        "metric": eval_metric
                     }
                     
-                    # Run agent analysis
-                    result = agent.run(query_dict)
-                    agent_response = result.get('response', '')
+                    # Use summarize_sections to avoid repetition
+                    agent_response = agent.summarize_sections(sections, metadata)
                     
                     print(f"[DEBUG] Agent response length: {len(agent_response)} chars")
                     
