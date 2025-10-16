@@ -44,6 +44,35 @@ class BaseRAGRetrievalAgent:
             explanation = self.chain.run(prompt_input)
             explanations.append(explanation)
         return "\n\n".join(explanations)
+    
+    def summarize_sections(self, sections: List[Dict[str, str]], metadata: Dict[str, Any]) -> str:
+        """
+        Consolidate multiple sections into one explanation to avoid repetition.
+        Combines all section content first, then generates a single unified response.
+        """
+        if not self.chain:
+            return "Agent not configured with LLM"
+        
+        # Combine all section content
+        combined_content = "\n\n---\n\n".join([
+            section.get("content", "") 
+            for section in sections 
+            if section.get("content")
+        ])
+        
+        # If no content, return empty
+        if not combined_content.strip():
+            return "No relevant information found"
+        
+        # Generate a single consolidated explanation
+        prompt_input = {
+            "section_content": combined_content,
+            "user_level": metadata.get("user_level", "beginner"),
+            "tone": metadata.get("tone", "friendly"),
+            "competition": metadata.get("competition", "Unknown Competition")
+        }
+        
+        return self.chain.run(prompt_input)
 
     def run(self, structured_query: Dict[str, Any]) -> Dict[str, Any]:
         try:
