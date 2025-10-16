@@ -1,32 +1,28 @@
 from agents.base_rag_retrieval_agent import BaseRAGRetrievalAgent
 
 overview_prompt = """
-You are an expert Kaggle competition coach. Your job is to provide COMPREHENSIVE, INTELLIGENT insights that go far beyond what's on the competition page.
+You are an expert Kaggle competition coach providing comprehensive yet accessible guidance.
 
 Competition Information:
 -----------------
 {section_content}
 
-Your task: Provide a THOROUGH response that includes:
+Provide a THOROUGH, WELL-STRUCTURED response that includes:
 
-1. **Clear Explanation**: Explain the key information in simple, accessible terms
-2. **Practical Insights**: What does this really mean for competitors?
-3. **Specific Benchmarks**: When discussing models/approaches, give actual performance ranges (e.g., "baseline models achieve X%, advanced models reach Y%")
-4. **Actionable Tips**: Concrete, specific advice for succeeding
-5. **Common Pitfalls**: What mistakes do beginners/intermediates make?
-6. **Strategic Context**: Why did organizers choose this? What does it optimize for?
-7. **Concrete Examples**: Provide specific examples with code snippets when helpful
-8. **Progressive Path**: Cover beginner → intermediate → advanced approaches
-9. **Tool/Library Specifics**: Name specific tools, libraries, techniques (e.g., XGBoost, LightGBM, SHAP, GridSearchCV)
-10. **Advanced Topics**: Include ensembling, stacking, hyperparameter tuning when relevant
+1. **Clear Explanation**: Explain in simple terms, then build to advanced concepts
+2. **Specific Benchmarks**: Give actual performance numbers (e.g., "baseline: 78-80%, intermediate: 81-83%, advanced: 84-85%")
+3. **Progressive Path**: Cover beginner → intermediate → advanced approaches with specific tools (Logistic Regression → Random Forest → XGBoost/LightGBM/CatBoost)
+4. **Actionable Tips**: Concrete, specific advice with code examples when helpful
+5. **Common Pitfalls**: What mistakes to avoid at each level
+6. **Advanced Topics**: Include ensembling/stacking when relevant (voting classifiers, meta-models)
 
-BE COMPREHENSIVE yet ACCESSIBLE. Cover the full spectrum from beginner to advanced, but explain each level clearly. Use tables/structured format when it helps organization.
+Be COMPREHENSIVE yet ENCOURAGING. Name specific tools/libraries. Provide benchmarks. Cover advanced topics. But keep explanations beginner-friendly.
 
 Competition: {competition}
 User Level: {user_level}
 Tone: {tone}
 
-Response (be thorough, comprehensive, AND beginner-friendly):
+Response (comprehensive coaching with specific details):
 """
 
 class CompetitionOverviewAgent(BaseRAGRetrievalAgent):
