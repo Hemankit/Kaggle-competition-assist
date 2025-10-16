@@ -1269,32 +1269,64 @@ def handle_component_query():
         has_error_keywords = any(word in query_lower for word in ['error', 'exception', 'traceback', 'valueerror', 'keyerror', 'typeerror', 'failed', 'not working', 'bug', 'issue'])
         has_code_block = '```' in query or 'import ' in query or 'def ' in query
         
+        # ===================================================================
+        # KEYWORD-BASED QUERY ROUTING
+        # Routes queries to appropriate handlers based on keywords
+        # For full list of supported query types, see QUERY_GUIDE.md
+        # ===================================================================
+        
         if has_error_keywords:
             response_type = "error_diagnosis"
-        elif any(word in query_lower for word in ['review my code', 'check my code', 'feedback on code', 'code review', 'improve my code', 'optimize', 'refactor']) or (has_code_block and any(word in query_lower for word in ['review', 'check', 'feedback', 'improve', 'better', 'wrong'])):
+        
+        # CODE REVIEW - User wants code feedback
+        elif any(word in query_lower for word in ['review my code', 'check my code', 'feedback on code', 'code review', 'improve my code', 'optimize', 'refactor', 'fix my code', 'debug my code', 'what\'s wrong with', 'code help']) or (has_code_block and any(word in query_lower for word in ['review', 'check', 'feedback', 'improve', 'better', 'wrong'])):
             response_type = "code_review"
+        
+        # COMMUNITY FEEDBACK - User reporting back from discussions
         elif any(word in query_lower for word in ['i posted', 'i asked', 'i commented', 'they suggested', 'they said', 'community said', 'got feedback', 'received feedback', 'discussion feedback', '@']) and any(word in query_lower for word in ['thread', 'discussion', 'forum', 'suggested', 'recommended', 'said']):
             response_type = "community_feedback"
-        elif any(word in query_lower for word in ['stagnating', 'stagnant', 'stuck', 'progress', 'how am i doing', 'am i doing well', 'ideas', 'suggest approaches', 'what should i try', 'breakthrough', 'need help', 'next step', 'give me ideas', 'generate ideas']):
+        
+        # MULTI-AGENT - Complex queries needing deep reasoning
+        elif any(word in query_lower for word in ['stagnating', 'stagnant', 'stuck', 'progress', 'how am i doing', 'am i doing well', 'ideas', 'suggest approaches', 'what should i try', 'breakthrough', 'need help', 'next step', 'give me ideas', 'generate ideas', 'not improving', 'plateau']):
             response_type = "multi_agent"
-        elif any(word in query_lower for word in ['discussion', 'forum', 'pinned', 'community', 'what are people saying']):
+        
+        # COMMUNITY/DISCUSSIONS - What are people talking about
+        elif any(word in query_lower for word in ['discussion', 'forum', 'pinned', 'community', 'what are people saying', 'what are people discussing', 'latest discussion', 'popular discussion', 'forum post']):
             response_type = "community"
-        elif any(word in query_lower for word in ['notebook', 'code', 'kernel', 'solution', 'example', 'implementation', 'top notebook', 'best notebook', 'winning solution', 'popular approach']):
+        
+        # NOTEBOOKS - Show me examples, solutions, code
+        elif any(word in query_lower for word in ['notebook', 'code', 'kernel', 'solution', 'example', 'implementation', 'top notebook', 'best notebook', 'winning solution', 'popular approach', 'show me', 'example code', 'sample code']):
             response_type = "notebooks"
-        elif any(word in query_lower for word in ['evaluation', 'evaluate', 'evaluated', 'metric', 'scoring', 'score', 'how is it scored', 'judged', 'judging', 'submission', 'submit']):
+        
+        # EVALUATION - Metric, scoring, submission format
+        elif any(word in query_lower for word in ['evaluation', 'evaluate', 'evaluated', 'metric', 'scoring', 'score', 'how is it scored', 'judged', 'judging', 'submission', 'submit', 'how to submit', 'submission format', 'submission file', 'leaderboard', 'ranked', 'graded']):
             response_type = "evaluation"
-        elif any(word in query_lower for word in ['data', 'dataset', 'features', 'columns', 'what data', 'file', 'files', 'csv', 'json', 'train.csv', 'test.csv', 'size', 'big', 'how big', 'download']):
+        
+        # DATA FILES - What data is available
+        elif any(word in query_lower for word in ['data', 'dataset', 'features', 'columns', 'what data', 'file', 'files', 'csv', 'json', 'train.csv', 'test.csv', 'size', 'big', 'how big', 'download', 'data file', 'available data', 'input data']):
             response_type = "data_analysis"
-        elif any(word in query_lower for word in ['get started', 'getting started', 'how do i start', 'how should i start', 'where do i begin', 'where should i begin', 'first steps', 'starting out']):
+        
+        # GETTING STARTED - First steps, beginner questions
+        elif any(word in query_lower for word in ['get started', 'getting started', 'how do i start', 'how should i start', 'where do i begin', 'where should i begin', 'first steps', 'starting out', 'begin', 'beginner', 'new to this']):
             response_type = "getting_started"
-        elif any(word in query_lower for word in ['approach', 'strategy', 'how to', 'recommend', 'advice', 'what should i do']):
+        
+        # STRATEGY - Approaches, recommendations, advice
+        elif any(word in query_lower for word in ['approach', 'strategy', 'how to', 'recommend', 'advice', 'what should i do', 'best way', 'tips', 'suggestion', 'guide']):
             response_type = "strategy"
-        elif any(word in query_lower for word in ['explain', 'what is', 'about', 'describe', 'overview']):
+        
+        # EXPLANATION - Tell me about, what is this
+        elif any(word in query_lower for word in ['explain', 'what is', 'about', 'describe', 'overview', 'tell me about', 'what\'s this', 'competition about', 'summary']):
             response_type = "explanation"
-        elif any(word in query_lower for word in ['model', 'algorithm', 'technique', 'ml model']):
+        
+        # TECHNICAL - Models, algorithms, techniques
+        elif any(word in query_lower for word in ['model', 'algorithm', 'technique', 'ml model', 'neural network', 'random forest', 'xgboost', 'which model', 'what algorithm']):
             response_type = "technical"
-        elif query_lower in ['hi', 'hello', 'hey', 'hi there']:
+        
+        # GREETING
+        elif query_lower in ['hi', 'hello', 'hey', 'hi there', 'hello there']:
             response_type = "greeting"
+        
+        # GENERAL - Catch-all fallback
         else:
             response_type = "general"
         
