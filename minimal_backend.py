@@ -2774,24 +2774,23 @@ Unable to fetch discussions at this time.
                             llm = get_llm_from_config(section="retrieval_agents")
                             agent = CompetitionSummaryAgent(llm=llm)
                             
-                            analysis_prompt = f"""User Query: {query}
-Competition: {competition_name}
+                            # Build content from context
+                            content = f"""Getting Started with {competition_name}
+User Query: {query}
 
-Context:
-{context_str if context_str else 'No cached data yet'}
+Competition Information:
+{context_str if context_str else 'Titanic - Machine Learning from Disaster. A beginner-friendly binary classification competition to predict passenger survival.'}
 
-Provide practical, actionable advice for getting started that:
-1. Recommends specific first steps (e.g., "Load train.csv and check for missing values in Age, Cabin")
-2. References actual competition details (files, metrics, deadlines)
-3. Suggests 2-3 concrete starter approaches from successful notebooks
-4. Prioritizes quick wins to build momentum
-5. Is encouraging and beginner-friendly
-
-Be specific to THIS competition, not generic advice."""
+Guide the user through:
+- Specific first steps with file names (train.csv, test.csv)
+- Concrete baseline to beat (e.g., gender-only model gets ~78% accuracy)
+- 2-3 starter features to focus on (Sex, Pclass, Age)
+- Quick wins to build momentum
+- Encouraging, competition-specific advice"""
                             
                             result = agent.summarize_sections(
-                                sections=[{"content": analysis_prompt, "title": "Getting Started"}],
-                                metadata={"competition": competition_slug}
+                                sections=[{"content": content, "title": "Getting Started"}],
+                                metadata={"competition": competition_name, "user_level": "beginner", "tone": "encouraging"}
                             )
                             
                             response = f"""🚀 **Getting Started with {competition_name}**
