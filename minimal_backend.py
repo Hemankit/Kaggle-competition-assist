@@ -62,18 +62,25 @@ except ImportError as e:
     print(f"[WARN] Warning: Guideline evaluator not available: {e}")
     GUIDELINE_EVALUATION_AVAILABLE = False
 
-# Import Scraping System
+# Import Scraping System (Core - REQUIRED)
 try:
     from scraper.overview_scraper import OverviewScraper
     from scraper.notebook_api_fetcher import NotebookAPIFetcher
     from scraper.discussion_scraper_playwright import DiscussionScraperPlaywright
+    SCRAPING_AVAILABLE = True
+    print("[OK] Core scraping system loaded successfully (OverviewScraper, NotebookAPIFetcher, DiscussionScraper)")
+except ImportError as e:
+    print(f"[WARN] Warning: Core scraping system not available: {e}")
+    SCRAPING_AVAILABLE = False
+
+# Import Advanced Scraping Features (OPTIONAL - can fail without breaking core)
+try:
     from hybrid_scraping_routing.agent_router import HybridScrapingAgent
     from query_processing.user_input_processor import UserInputProcessor
-    SCRAPING_AVAILABLE = True
-    print("[OK] Scraping system loaded successfully")
+    print("[OK] Advanced scraping features loaded (HybridScrapingAgent, UserInputProcessor)")
 except ImportError as e:
-    print(f"[WARN] Warning: Scraping system not available: {e}")
-    SCRAPING_AVAILABLE = False
+    print(f"[WARN] Advanced scraping features not available (optional): {e}")
+    # Don't set SCRAPING_AVAILABLE to False - core scrapers still work!
 
 # Import Agents and LLM for intelligent analysis
 try:
@@ -192,9 +199,10 @@ def search_kaggle_competitions(query: str) -> list:
     
     try:
         # Use real Kaggle API
+        # Note: Removed category parameter - "all" causes 400 error
+        # Valid categories: "getting-started", "playground", "research", etc.
         competitions = api_search_competitions(
             query=query,
-            category="all",
             sort_by="latestDeadline",
             page=1,
             page_size=10
@@ -1273,9 +1281,9 @@ def handle_component_query():
             response_type = "community"
         elif any(word in query_lower for word in ['notebook', 'code', 'kernel', 'solution', 'example', 'implementation', 'top notebook', 'best notebook', 'winning solution', 'popular approach']):
             response_type = "notebooks"
-        elif any(word in query_lower for word in ['evaluation', 'metric', 'scoring', 'score', 'how is it scored', 'judged', 'judging']):
+        elif any(word in query_lower for word in ['evaluation', 'metric', 'scoring', 'score', 'how is it scored', 'judged', 'judging', 'submission format', 'submission file', 'submit', 'how to submit']):
             response_type = "evaluation"
-        elif any(word in query_lower for word in ['data', 'dataset', 'features', 'columns', 'what data', 'file', 'files', 'csv', 'json', 'train.csv', 'test.csv', 'submission', 'size', 'big', 'how big']):
+        elif any(word in query_lower for word in ['data', 'dataset', 'features', 'columns', 'what data', 'file', 'files', 'csv', 'json', 'train.csv', 'test.csv', 'size', 'big', 'how big', 'download']):
             response_type = "data_analysis"
         elif any(word in query_lower for word in ['approach', 'strategy', 'how to', 'recommend', 'advice', 'what should i do']):
             response_type = "strategy"
@@ -2695,112 +2703,257 @@ Unable to fetch discussions at this time.
 **🎊 Let's make this competition a success!** Ask me anything about your approach, code, or strategy."""
 
                 elif response_type == "strategy":
-                    response = f"""🎯 **Strategic Approach for {competition_name}**
+                    # Handle strategy/approach questions intelligently
+                    print(f"[DEBUG] Handling strategy query for {competition_slug}")
+                    
+                    if AGENT_AVAILABLE and CHROMADB_AVAILABLE and chromadb_pipeline:
+                        try:
+                            # Retrieve relevant notebook insights for context
+                            notebook_context = chromadb_pipeline.retriever.retrieve(
+                                f"best approaches and strategies for {competition_slug}",
+                                top_k=5
+                            )
+                            
+                            # Build context from notebooks
+                            context_str = ""
+                            if notebook_context:
+                                context_str = "\n\n".join([
+                                    f"**Approach {i+1}**: {doc.get('content', '')[:300]}"
+                                    for i, doc in enumerate(notebook_context[:3])
+                                ])
+                            
+                            # Use CompetitionSummaryAgent for intelligent analysis
+                            llm = get_llm_from_config(section="retrieval_agents")
+                            agent = CompetitionSummaryAgent(llm=llm)
+                            
+                            # Create prompt that respects user's input
+                            analysis_prompt = f"""User Query: {query}
 
-**📊 Competition Analysis:**
-- Competition: {competition_name} ({competition_slug})
-- User: {kaggle_username}
+Competition: {competition_name}
 
-**🚀 Recommended Strategy:**
+Relevant approaches from top notebooks:
+{context_str if context_str else 'No cached notebooks yet'}
 
-1. **Data Exploration Phase**
-   - Start with comprehensive EDA (Exploratory Data Analysis)
-   - Understand data distributions, missing values, and correlations
-   - Identify key features and potential data quality issues
+Provide intelligent, contextual advice that:
+1. Directly addresses the user's specific question
+2. Acknowledges any approaches they mentioned
+3. Builds on their ideas rather than ignoring them
+4. Provides actionable, competition-specific recommendations
+5. References concrete strategies from successful notebooks when relevant
 
-2. **Feature Engineering**
-   - Create domain-specific features relevant to {competition_name}
-   - Handle categorical variables appropriately
-   - Consider feature scaling and normalization
+Be collaborative, not prescriptive. If the user mentioned an approach, evaluate it thoughtfully."""
+                            
+                            result = agent.summarize_sections(
+                                sections=[{"content": analysis_prompt, "title": "Strategy Analysis"}],
+                                metadata={"competition": competition_slug}
+                            )
+                            
+                            response = f"""🎯 **Strategic Advice for {competition_name}**
 
-3. **Model Development**
-   - Begin with baseline models (Linear Regression, Random Forest)
-   - Progress to ensemble methods (XGBoost, LightGBM)
-   - Implement cross-validation for robust evaluation
+**Competition**: {competition_name}
+**User**: {kaggle_username}
 
-4. **Iteration & Improvement**
-   - Analyze model errors and feature importance
-   - Refine feature engineering based on insights
-   - Consider advanced techniques (stacking, blending)
+---
 
-**💡 Next Steps:**
-- Explore the competition dataset thoroughly
-- Study top-performing notebooks for insights
-- Join discussions for community insights
-- Start with a simple baseline and iterate
+{result}
 
-*This analysis is powered by the multi-agent reasoning system.*"""
+---
+
+*Analysis powered by AI agent with insights from top-performing notebooks.*"""
+                            
+                        except Exception as e:
+                            print(f"[ERROR] Strategy agent failed: {e}")
+                            import traceback
+                            traceback.print_exc()
+                            # Fallback to general intelligent handler below
+                            response = None
+                    else:
+                        response = None
+                    
+                    # If agent not available or failed, use fallback
+                    if not response:
+                        response = f"""🎯 **Strategy Advice for {competition_name}**
+
+I'd love to help with your strategy for **{competition_name}**, but the intelligent analysis system isn't available right now.
+
+**Your question**: {query}
+
+**To get better help**, try:
+- "What notebooks work best for this competition?"
+- "How should I approach feature engineering?"
+- "What models perform well here?"
+
+*Requires agent system to be fully available.*"""
                 
                 elif response_type == "explanation":
-                    response = f"""📚 **Competition Overview: {competition_name}**
+                    # Handle overview/explanation questions intelligently
+                    print(f"[DEBUG] Handling explanation/overview query for {competition_slug}")
+                    
+                    if AGENT_AVAILABLE and CHROMADB_AVAILABLE and chromadb_pipeline:
+                        try:
+                            # Query ChromaDB for overview content
+                            overview_results = chromadb_pipeline.retriever._get_collection().query(
+                                query_texts=[query],
+                                n_results=10,
+                                where={
+                                    "$and": [
+                                        {"competition_slug": competition_slug},
+                                        {"section": "overview"}
+                                    ]
+                                }
+                            )
+                            
+                            # Build context from overview sections
+                            context_str = ""
+                            if overview_results and overview_results['documents'] and overview_results['documents'][0]:
+                                context_str = "\n\n".join([
+                                    doc for doc in overview_results['documents'][0][:5]
+                                    if doc and len(doc) > 50  # Filter out tiny/useless sections
+                                ])
+                            
+                            # Use CompetitionSummaryAgent for intelligent synthesis
+                            llm = get_llm_from_config(section="retrieval_agents")
+                            agent = CompetitionSummaryAgent(llm=llm)
+                            
+                            # Create prompt
+                            analysis_prompt = f"""User Query: {query}
 
-**🏆 Competition Details:**
-- Name: {competition_name}
-- Slug: {competition_slug}
-- Participant: {kaggle_username}
+Competition: {competition_name}
 
-**🎯 About This Competition:**
-This is a Kaggle competition focused on data science and machine learning. Based on the competition name and context, this appears to be a structured competition with clear objectives.
+Overview information:
+{context_str if context_str else 'No overview data cached yet'}
 
-**🔍 What You Should Know:**
-- **Objective**: The specific goal depends on the competition type (classification, regression, etc.)
-- **Evaluation**: Performance will be measured using appropriate metrics
-- **Timeline**: Check the competition deadline and submission limits
-- **Data**: Explore the provided datasets for insights
+Provide a clear, informative explanation that:
+1. Directly answers the user's question
+2. Provides competition-specific details
+3. Includes relevant context about objectives, data, and evaluation
+4. Is helpful and actionable
 
-**📖 Key Areas to Focus On:**
-1. **Problem Understanding**: Read the competition description thoroughly
-2. **Data Analysis**: Examine train/test splits and data characteristics
-3. **Evaluation Metrics**: Understand how submissions are scored
-4. **Community**: Engage with discussions and kernels for insights
+Be conversational and informative."""
+                            
+                            result = agent.summarize_sections(
+                                sections=[{"content": analysis_prompt, "title": "Overview"}],
+                                metadata={"competition": competition_slug}
+                            )
+                            
+                            response = f"""📚 **Competition Overview: {competition_name}**
 
-**🚀 Getting Started:**
-- Read the competition overview and data description
-- Download and explore the datasets
-- Study successful approaches from similar competitions
-- Start with a simple baseline model
+**Competition**: {competition_name}
+**User**: {kaggle_username}
 
-*This explanation is generated by the intelligent multi-agent analysis system.*"""
+---
+
+{result}
+
+---
+
+*Overview powered by AI agent with scraped competition data.*"""
+                            
+                        except Exception as e:
+                            print(f"[ERROR] Explanation agent failed: {e}")
+                            import traceback
+                            traceback.print_exc()
+                            response = None
+                    else:
+                        response = None
+                    
+                    # If agent not available or failed, use minimal fallback
+                    if not response:
+                        response = f"""📚 **Competition Overview: {competition_name}**
+
+I'd love to explain **{competition_name}** in detail, but the intelligent analysis system isn't available right now.
+
+**Your question**: {query}
+
+**To get better information**, try:
+- "What is the evaluation metric?"
+- "Show me the top notebooks"
+- "What data files are available?"
+
+*Requires agent system to be fully available.*"""
                 
                 elif response_type == "technical":
-                    response = f"""⚙️ **Technical Recommendations for {competition_name}**
+                    # Handle technical/model questions intelligently
+                    print(f"[DEBUG] Handling technical query for {competition_slug}")
+                    
+                    if AGENT_AVAILABLE and CHROMADB_AVAILABLE and chromadb_pipeline:
+                        try:
+                            # Retrieve relevant technical approaches from notebooks
+                            notebook_context = chromadb_pipeline.retriever.retrieve(
+                                f"models algorithms and techniques for {competition_slug}",
+                                top_k=5
+                            )
+                            
+                            # Build context from notebooks
+                            context_str = ""
+                            if notebook_context:
+                                context_str = "\n\n".join([
+                                    f"**Technical approach {i+1}**: {doc.get('content', '')[:300]}"
+                                    for i, doc in enumerate(notebook_context[:3])
+                                ])
+                            
+                            # Use CompetitionSummaryAgent for intelligent analysis
+                            llm = get_llm_from_config(section="retrieval_agents")
+                            agent = CompetitionSummaryAgent(llm=llm)
+                            
+                            # Create prompt that respects user's input
+                            analysis_prompt = f"""User Query: {query}
 
-**🔬 Model & Algorithm Suggestions:**
+Competition: {competition_name}
 
-**For {competition_name}, consider these approaches:**
+Technical approaches from successful notebooks:
+{context_str if context_str else 'No cached notebooks yet'}
 
-1. **Baseline Models**
-   - Linear Regression (for regression tasks)
-   - Logistic Regression (for classification)
-   - Decision Trees (for interpretability)
+Provide intelligent technical advice that:
+1. Directly addresses the user's specific question
+2. Acknowledges any techniques or models they mentioned
+3. Evaluates their approach thoughtfully
+4. Provides competition-specific model/algorithm recommendations
+5. References what actually works well in this competition based on notebooks
 
-2. **Advanced Models**
-   - Random Forest (robust baseline)
-   - XGBoost/LightGBM (gradient boosting)
-   - Neural Networks (for complex patterns)
+Be collaborative and respectful of their technical choices. Build on their ideas."""
+                            
+                            result = agent.summarize_sections(
+                                sections=[{"content": analysis_prompt, "title": "Technical Analysis"}],
+                                metadata={"competition": competition_slug}
+                            )
+                            
+                            response = f"""⚙️ **Technical Advice for {competition_name}**
 
-3. **Feature Engineering Techniques**
-   - One-hot encoding for categorical variables
-   - Polynomial features for non-linear relationships
-   - Domain-specific feature creation
+**Competition**: {competition_name}
+**User**: {kaggle_username}
 
-4. **Model Evaluation**
-   - Cross-validation for robust estimates
-   - Holdout validation for final assessment
-   - Feature importance analysis
+---
 
-**🛠️ Technical Stack Recommendations:**
-- **Data Processing**: pandas, numpy
-- **Visualization**: matplotlib, seaborn
-- **Machine Learning**: scikit-learn, xgboost, lightgbm
-- **Deep Learning**: tensorflow, pytorch (if needed)
+{result}
 
-**📊 Performance Optimization:**
-- Hyperparameter tuning (GridSearch, RandomSearch)
-- Feature selection techniques
-- Ensemble methods for improved performance
+---
 
-*These technical recommendations are powered by the multi-agent reasoning system.*"""
+*Technical analysis powered by AI agent with insights from top-performing notebooks.*"""
+                            
+                        except Exception as e:
+                            print(f"[ERROR] Technical agent failed: {e}")
+                            import traceback
+                            traceback.print_exc()
+                            # Fallback to general intelligent handler below
+                            response = None
+                    else:
+                        response = None
+                    
+                    # If agent not available or failed, use fallback
+                    if not response:
+                        response = f"""⚙️ **Technical Advice for {competition_name}**
+
+I'd love to help with technical recommendations for **{competition_name}**, but the intelligent analysis system isn't available right now.
+
+**Your question**: {query}
+
+**To get better help**, try:
+- "Show me top notebooks for this competition"
+- "What models work well here?"
+- "How do successful solutions handle feature engineering?"
+
+*Requires agent system to be fully available.*"""
                 
                 else:  # general
                     response = f"""🤖 **AI Assistant Response for {competition_name}**

@@ -64,8 +64,17 @@ Focus on:
 1. **Syntax Errors**: Missing parentheses, brackets, incorrect indentation
 2. **Logic Errors**: Invalid parameters, wrong data types, incorrect method usage
 3. **Data Leakage**: Using target variable in feature engineering, improper train/test splitting
-4. **Inefficiencies**: Loops instead of vectorization, redundant operations
+4. **Inefficiencies**: 
+   - Loops with iloc/iterrows instead of direct column access or .apply()
+   - Redundant operations or unnecessary computations
+   - Use vectorized operations (e.g., df['col'].str.upper()) when transforming entire columns
 5. **Best Practices**: Reproducibility (random seeds), modular code, error handling
+
+IMPORTANT: Be precise with terminology:
+- For simple printing/iteration: Say "use direct column access" (e.g., print(df['Name']) or for name in df['Name'])
+- For data transformation: Say "use vectorized operations" (e.g., df['Age'].fillna(), df['Name'].str.upper())
+- NEVER say "vectorized operations" when the user is only printing or reading data - that's just "direct column access"
+- Only mention "vectorization" if the code transforms/modifies data across entire columns
 
 User Query:
 {query}
@@ -79,7 +88,7 @@ Competition Context (if available):
 Provide:
 - Clear identification of issues (if any)
 - Specific line references when possible
-- Actionable suggestions for improvement
+- Actionable suggestions with CORRECT examples
 - Positive feedback for well-written code
 
 Be concise but thorough. Prioritize the most impactful issues first.
@@ -214,8 +223,9 @@ Be concise but thorough. Prioritize the most impactful issues first.
         # Check for inefficient loops
         if 'for i in range(len(' in code:
             issues.append(
-                "💡 **Efficiency**: Consider using vectorized operations instead of loops. "
-                "Pandas/NumPy operations are much faster. Try using `.apply()` or direct column operations."
+                "💡 **Efficiency**: Avoid looping with `iloc` or `iterrows()` - it's slow. "
+                "Use direct column access (e.g., `for name in df['Name']:`) or vectorized operations "
+                "if transforming data (e.g., `df['Name'].str.upper()`)."
             )
         
         # Check for test_size issues

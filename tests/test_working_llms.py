@@ -47,18 +47,20 @@ try:
 except Exception as e:
     print(f"   ❌ Groq - FAILED (Pydantic conflict?): {str(e)[:100]}")
 
-# Test 3: DeepSeek
+# Test 3: DeepSeek (via OpenAI-compatible API)
 print("\n3️⃣  Testing DeepSeek...")
 try:
-    from langchain_deepseek import ChatDeepSeek
+    from langchain_openai import ChatOpenAI
     deepseek_key = os.getenv("DEEPSEEK_API_KEY")
     if deepseek_key:
-        # Try correct model name
-        llm = ChatDeepSeek(
+        # DeepSeek via OpenAI-compatible API
+        llm = ChatOpenAI(
             model="deepseek-chat",  # Correct model name
-            temperature=0.2
+            temperature=0.2,
+            api_key=deepseek_key,
+            base_url="https://api.deepseek.com/v1"
         )
-        print("   ✅ DeepSeek - WORKS")
+        print("   ✅ DeepSeek (OpenAI-compatible) - WORKS")
         print(f"   Model: deepseek-chat")
     else:
         print("   ⚠️  DeepSeek API Key not found")

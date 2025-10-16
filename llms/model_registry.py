@@ -8,10 +8,23 @@ load_dotenv()
 
 # LLM Imports (all Pydantic v2 compatible)
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_groq import ChatGroq  # ✅ Now working with 0.3.8
-from langchain_deepseek import ChatDeepSeek
-from langchain_ollama import ChatOllama
-from langchain_huggingface import HuggingFacePipeline
+from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI  # For DeepSeek compatibility (OpenAI-compatible API)
+
+# Optional imports - don't break if missing (for local development only)
+try:
+    from langchain_ollama import ChatOllama
+    OLLAMA_AVAILABLE = True
+except ImportError:
+    OLLAMA_AVAILABLE = False
+    ChatOllama = None
+
+try:
+    from langchain_huggingface import HuggingFacePipeline
+    HUGGINGFACE_AVAILABLE = True
+except ImportError:
+    HUGGINGFACE_AVAILABLE = False
+    HuggingFacePipeline = None
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "llm_config.json")
 
@@ -53,25 +66,35 @@ def load_model_for_task(task_name: str) -> Any:
         )
 
     elif provider == "ollama":
-        # Ollama (local models, no API key needed)
+        # Ollama (local models - development only)
+        if not OLLAMA_AVAILABLE:
+            raise ValueError(
+                "Ollama not available. For production, use 'groq' or 'google' provider instead. "
+                "Ollama is only for local development."
+            )
         return ChatOllama(
             model=model,
             temperature=temperature
         )
     
     elif provider == "deepseek":
-        # DeepSeek (strong reasoning)
+        # DeepSeek (using OpenAI-compatible API)
         deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
         if not deepseek_api_key:
             raise ValueError("DEEPSEEK_API_KEY not found in environment variables")
-        return ChatDeepSeek(
+        return ChatOpenAI(
             model=model,
             temperature=temperature,
-            api_key=deepseek_api_key
+            api_key=deepseek_api_key,
+            base_url="https://api.deepseek.com/v1"
         )
     
     elif provider == "huggingface":
         # HuggingFace (local or API models)
+        if not HUGGINGFACE_AVAILABLE:
+            raise ValueError(
+                "HuggingFace not available. For production, use 'groq' or 'google' provider instead."
+            )
         return HuggingFacePipeline.from_model_id(
             model_id=model,
             task="text-generation",

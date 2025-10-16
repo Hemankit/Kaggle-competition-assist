@@ -8,8 +8,9 @@ langchain==0.1.9
 langchain-community==0.0.24
 langchain-core==0.1.52  # Updated for langchain-huggingface compatibility
 langchain-google-genai==0.0.11
-langchain-groq==0.0.1
+langchain-groq==0.0.1  # CRITICAL: Must use 0.0.1 with httpx==0.23.0 (newer versions incompatible)
 langchain-huggingface==0.0.1
+langchain-perplexity==0.1.2  # For Perplexity Sonar (deep reasoning + search-augmented context)
 # langchain-ollama==0.0.1  # Not needed for production - uses Ollama locally only
 langchain-openai==0.0.2  # Downgraded for crewai 0.11.0 compatibility
 
@@ -44,6 +45,7 @@ python-dotenv==1.0.0
 pydantic==2.6.1
 requests==2.31.0
 aiohttp==3.9.3
+httpx==0.23.0  # CRITICAL: Required for groq 0.4.2 compatibility (uses 'proxies' param)
 
 # CORS
 flask-cors==4.0.0
