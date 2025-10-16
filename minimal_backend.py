@@ -3029,69 +3029,77 @@ I'd love to explain **{competition_name}** in detail, but I couldn't retrieve co
 *Requires agent system and competition data to be available.*"""
                 
                 elif response_type == "technical":
-                    # Handle technical/model questions intelligently
-                    print(f"[DEBUG] Handling technical query for {competition_slug}")
+                    # Handle technical/model questions - route to multi-agent orchestrator
+                    print(f"[DEBUG] Handling technical query for {competition_slug} via multi-agent orchestration")
                     
-                    if AGENT_AVAILABLE and CHROMADB_AVAILABLE and chromadb_pipeline:
+                    if component_orchestrator:
                         try:
-                            # Retrieve relevant technical approaches from notebooks
-                            notebook_context = chromadb_pipeline.retriever.retrieve(
-                                f"models algorithms and techniques for {competition_slug}",
-                                top_k=5
-                            )
+                            # Prepare context for multi-agent orchestration
+                            orchestration_context = {
+                                "competition": competition_slug,
+                                "competition_name": competition_name,
+                                "user": kaggle_username,
+                                "query": query,
+                                "query_type": "technical"
+                            }
                             
-                            # Build context from notebooks
-                            context_str = ""
-                            if notebook_context:
-                                context_str = "\n\n".join([
-                                    f"**Technical approach {i+1}**: {doc.get('content', '')[:300]}"
-                                    for i, doc in enumerate(notebook_context[:3])
-                                ])
+                            # Fetch competition details
+                            if KAGGLE_API_AVAILABLE:
+                                try:
+                                    comp_details = api_get_competition_details(competition_slug)
+                                    orchestration_context["evaluation_metric"] = comp_details.get('evaluation_metric', 'Unknown')
+                                    orchestration_context["competition_type"] = comp_details.get('category', 'Unknown')
+                                except Exception as e:
+                                    print(f"[DEBUG] Could not fetch competition details: {e}")
                             
-                            # Use CompetitionSummaryAgent for intelligent analysis
-                            llm = get_llm_from_config(section="retrieval_agents")
-                            agent = CompetitionSummaryAgent(llm=llm)
+                            # Fetch notebooks/approaches context
+                            if CHROMADB_AVAILABLE and chromadb_pipeline:
+                                try:
+                                    notebooks = chromadb_pipeline.retriever.retrieve(
+                                        f"models algorithms techniques for {competition_slug}",
+                                        top_k=5
+                                    )
+                                    if notebooks:
+                                        orchestration_context['technical_approaches'] = [
+                                            {
+                                                "title": nb.get('metadata', {}).get('title', 'Unknown'),
+                                                "approach": nb.get('content', '')[:300]
+                                            }
+                                            for nb in notebooks[:3]
+                                        ]
+                                except Exception as e:
+                                    print(f"[DEBUG] Could not fetch notebook context: {e}")
                             
-                            # Create prompt that respects user's input
-                            analysis_prompt = f"""User Query: {query}
-
-Competition: {competition_name}
-
-Technical approaches from successful notebooks:
-{context_str if context_str else 'No cached notebooks yet'}
-
-Provide intelligent technical advice that:
-1. Directly addresses the user's specific question
-2. Acknowledges any techniques or models they mentioned
-3. Evaluates their approach thoughtfully
-4. Provides competition-specific model/algorithm recommendations
-5. References what actually works well in this competition based on notebooks
-
-Be collaborative and respectful of their technical choices. Build on their ideas."""
+                            # Run multi-agent orchestrator - let it coordinate dynamically
+                            print("[DEBUG] Running multi-agent orchestration for technical query...")
+                            orchestration_result = component_orchestrator.run({
+                                "query": query,
+                                "mode": "crewai",  # Use CrewAI for agent collaboration
+                                "context": orchestration_context
+                            })
                             
-                            result = agent.summarize_sections(
-                                sections=[{"content": analysis_prompt, "title": "Technical Analysis"}],
-                                metadata={"competition": competition_slug}
-                            )
+                            agent_response = orchestration_result.get('response', '')
+                            agents_used = orchestration_result.get('agents_used', [])
                             
-                            response = f"""⚙️ **Technical Advice for {competition_name}**
+                            agents_list = ", ".join(agents_used) if agents_used else "Multi-Agent System"
+                            response = f"""⚙️ **Technical Analysis for {competition_name}**
 
 **Competition**: {competition_name}
 **User**: {kaggle_username}
+**Agents**: {agents_list}
 
 ---
 
-{result}
+{agent_response}
 
 ---
 
-*Technical analysis powered by AI agent with insights from top-performing notebooks.*"""
+*Multi-agent technical analysis with insights from notebooks, discussions, and expert reasoning.*"""
                             
                         except Exception as e:
-                            print(f"[ERROR] Technical agent failed: {e}")
+                            print(f"[ERROR] Multi-agent orchestration failed: {e}")
                             import traceback
                             traceback.print_exc()
-                            # Fallback to general intelligent handler below
                             response = None
                     else:
                         response = None
@@ -3100,16 +3108,15 @@ Be collaborative and respectful of their technical choices. Build on their ideas
                     if not response:
                         response = f"""⚙️ **Technical Advice for {competition_name}**
 
-I'd love to help with technical recommendations for **{competition_name}**, but the intelligent analysis system isn't available right now.
+I'd love to help with technical recommendations for **{competition_name}**, but the multi-agent system isn't available right now.
 
 **Your question**: {query}
 
 **To get better help**, try:
 - "Show me top notebooks for this competition"
-- "What models work well here?"
-- "How do successful solutions handle feature engineering?"
+- "What are successful approaches?"
 
-*Requires agent system to be fully available.*"""
+*Requires multi-agent orchestration system to be available.*"""
                 
                 else:  # general
                     response = f"""🤖 **AI Assistant Response for {competition_name}**

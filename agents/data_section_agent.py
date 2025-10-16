@@ -20,9 +20,9 @@ class DataSectionAgent(BaseRAGRetrievalAgent):
     def __init__(self, llm=None, retriever=None):
         """Initialize the Data Section Agent."""
         
-        # Simple prompt for data summarization
-        summary_prompt = """You are a Kaggle competition data expert. 
-Analyze the provided data file information and create a clear, concise summary.
+        # Simple prompt for data summarization - RETRIEVAL ONLY
+        summary_prompt = """You are a Kaggle competition data information retrieval agent. 
+Your role is to present FACTUAL information about data files - NOT to give recommendations or advice.
 
 Competition: {competition}
 User Query: {user_query}
@@ -33,13 +33,26 @@ Data Files:
 Data Description (from competition page):
 {description}
 
-Provide a summary that includes:
-1. Overview of available files (train, test, submission templates)
-2. Key insights about file sizes and formats
-3. Important notes about data structure or missing information
-4. Actionable recommendations for data loading/exploration
+Present the KEY FACTS clearly:
+1. What files are available (names, sizes, formats)
+2. What each file contains (based on description)
+3. Notable characteristics (file sizes, number of files, formats)
+4. Any missing information or gaps in the data description
 
-Keep it concise and practical."""
+BE FACTUAL, not advisory. Present information that reasoning agents can use to formulate recommendations.
+
+DO NOT:
+- Give recommendations ("you should load...", "I recommend...")
+- Suggest approaches or strategies
+- Tell the user what to do
+
+DO:
+- List available files clearly
+- Present file metadata (sizes, formats)
+- Explain what each file contains
+- Note any important characteristics
+
+Keep it concise and informative."""
         
         super().__init__(
             agent_name="DataSectionAgent",

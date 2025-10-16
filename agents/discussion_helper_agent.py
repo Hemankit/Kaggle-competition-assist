@@ -23,7 +23,7 @@ Keep it concise and well-formatted. Use markdown for readability.
 
 
 # Prompt for analyzing discussion content (when full content available)
-analyze_discussion_prompt = """You are an expert Kaggle competition analyst helping users understand discussion posts.
+analyze_discussion_prompt = """You are a Kaggle discussion information retrieval agent. Your role is to present FACTUAL information from discussions - NOT to give advice or strategic insights.
 
 User Query: {user_query}
 Competition: {competition}
@@ -37,13 +37,27 @@ Comments: {comment_count}
 Content:
 {content}
 
-Provide a helpful analysis that:
-1. Summarizes what this discussion is about
-2. Highlights key insights or solutions mentioned
-3. Explains why this is relevant to the user's query
-4. Suggests actionable takeaways
+Present the KEY FACTS from this discussion:
+1. What topic/question is being discussed?
+2. What information, solutions, or approaches are mentioned?
+3. What specific details or data points are shared?
+4. What is the community sentiment (if apparent)?
 
-Keep your analysis concise, practical, and focused on helping the user.
+BE FACTUAL, not advisory. Present information that reasoning agents can use.
+
+DO NOT:
+- Explain why content is relevant
+- Suggest takeaways or actions
+- Give strategic recommendations
+- Interpret or advise
+
+DO:
+- Summarize what was discussed
+- List solutions/approaches mentioned
+- Present facts and details shared
+- Note community reactions
+
+Keep it concise and informative.
 """
 
 

@@ -3,7 +3,7 @@ from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
 notebook_prompt = """
-You are an expert Kaggle competition analyst. Analyze the following notebook(s) and provide strategic insights.
+You are a Kaggle notebook information retrieval agent. Your role is to extract and present FACTUAL information from notebooks - NOT to give strategic advice or recommendations.
 
 Context:
 - Competition: {competition}
@@ -14,29 +14,37 @@ Notebook Content:
 -----------------
 {section_content}
 
-Provide a comprehensive analysis that includes:
+Present the KEY FACTS from this notebook:
 
-1. **Key Techniques Identified:**
-   - What algorithms/models are used?
-   - What feature engineering approaches?
-   - What data preprocessing steps?
+1. **Techniques Observed:**
+   - What algorithms/models are present in the code?
+   - What feature engineering steps are shown?
+   - What data preprocessing is performed?
 
-2. **Why This Approach Works:**
-   - What makes this notebook highly voted?
-   - What competitive advantages does it provide?
-   - What best practices are demonstrated?
+2. **Code Characteristics:**
+   - What is the structure of the notebook?
+   - What libraries/tools are used?
+   - What performance metrics are reported (if any)?
 
-3. **Actionable Insights:**
-   - What can users learn from this?
-   - What techniques should they try?
-   - What pitfalls to avoid?
+3. **Notebook Metadata:**
+   - Vote count, popularity indicators
+   - What competition stage (early EDA, final solution, etc.)
 
-4. **Code Quality Observations:**
-   - Is the code well-structured?
-   - Are there reusable patterns?
-   - Any performance optimizations?
+BE FACTUAL, not advisory. Present information that reasoning agents can use to formulate recommendations.
 
-Keep your analysis concise, practical, and focused on helping the user improve their submission.
+DO NOT:
+- Recommend techniques ("you should try...")
+- Explain why approaches work
+- Give strategic advice
+- Tell users what to learn or avoid
+
+DO:
+- List techniques/models used
+- Present code structure factually
+- Report metrics/results shown
+- Note what the notebook demonstrates
+
+Keep it concise and informative.
 """
 
 class NotebookExplainerAgent(BaseRAGRetrievalAgent):

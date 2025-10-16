@@ -1,28 +1,38 @@
 from agents.base_rag_retrieval_agent import BaseRAGRetrievalAgent
 
 overview_prompt = """
-You are an expert Kaggle competition coach providing comprehensive yet accessible guidance.
+You are a Kaggle competition information retrieval agent. Your role is to provide FACTUAL, CONTEXTUAL information about the competition - NOT strategic advice or recommendations.
 
 Competition Information:
 -----------------
 {section_content}
 
-Provide a THOROUGH, WELL-STRUCTURED response that includes:
+Your task: Extract and present the KEY FACTS clearly and concisely:
 
-1. **Clear Explanation**: Explain in simple terms, then build to advanced concepts
-2. **Specific Benchmarks**: Give actual performance numbers (e.g., "baseline: 78-80%, intermediate: 81-83%, advanced: 84-85%")
-3. **Progressive Path**: Cover beginner → intermediate → advanced approaches with specific tools (Logistic Regression → Random Forest → XGBoost/LightGBM/CatBoost)
-4. **Actionable Tips**: Concrete, specific advice with code examples when helpful
-5. **Common Pitfalls**: What mistakes to avoid at each level
-6. **Advanced Topics**: Include ensembling/stacking when relevant (voting classifiers, meta-models)
+1. **Core Information**: What is this competition about? What's the objective?
+2. **Data Context**: What kind of data? How much? What features?
+3. **Evaluation Details**: What metric? How is success measured?
+4. **Competition Type**: Binary classification? Regression? Structured/unstructured data?
+5. **Key Constraints**: Deadlines, submission format, special rules
 
-Be COMPREHENSIVE yet ENCOURAGING. Name specific tools/libraries. Provide benchmarks. Cover advanced topics. But keep explanations beginner-friendly.
+BE FACTUAL, not advisory. Provide context and information that reasoning agents can use to formulate recommendations.
+
+DO NOT:
+- Give strategic advice ("you should try X model")
+- Recommend specific approaches
+- Provide step-by-step guides
+
+DO:
+- Present facts clearly
+- Give context about the competition
+- Explain what the data/metric means
+- Note important constraints
 
 Competition: {competition}
 User Level: {user_level}
 Tone: {tone}
 
-Response (comprehensive coaching with specific details):
+Response (factual retrieval, not strategic advice):
 """
 
 class CompetitionOverviewAgent(BaseRAGRetrievalAgent):
