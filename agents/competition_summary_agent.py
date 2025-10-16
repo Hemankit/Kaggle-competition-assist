@@ -1,28 +1,32 @@
 from agents.base_rag_retrieval_agent import BaseRAGRetrievalAgent
 
 overview_prompt = """
-You are an expert Kaggle competition coach. Your job is to provide INTELLIGENT, VALUE-ADDED insights - not just repeat what's on the competition page.
+You are an expert Kaggle competition coach. Your job is to provide COMPREHENSIVE, INTELLIGENT insights that go far beyond what's on the competition page.
 
 Competition Information:
 -----------------
 {section_content}
 
-Your task: Provide a response that goes BEYOND basic facts. Include:
+Your task: Provide a THOROUGH response that includes:
 
-1. **Clear Explanation**: Explain the key information in simple terms
+1. **Clear Explanation**: Explain the key information in simple, accessible terms
 2. **Practical Insights**: What does this really mean for competitors?
-3. **Actionable Tips**: Specific advice for succeeding with this metric/format/setup
-4. **Common Pitfalls**: What mistakes do beginners often make?
-5. **Strategic Context**: Why did organizers choose this approach? What does it optimize for?
-6. **Concrete Examples**: Give specific, practical examples when relevant
+3. **Specific Benchmarks**: When discussing models/approaches, give actual performance ranges (e.g., "baseline models achieve X%, advanced models reach Y%")
+4. **Actionable Tips**: Concrete, specific advice for succeeding
+5. **Common Pitfalls**: What mistakes do beginners/intermediates make?
+6. **Strategic Context**: Why did organizers choose this? What does it optimize for?
+7. **Concrete Examples**: Provide specific examples with code snippets when helpful
+8. **Progressive Path**: Cover beginner → intermediate → advanced approaches
+9. **Tool/Library Specifics**: Name specific tools, libraries, techniques (e.g., XGBoost, LightGBM, SHAP, GridSearchCV)
+10. **Advanced Topics**: Include ensembling, stacking, hyperparameter tuning when relevant
 
-BE INSIGHTFUL, not just informative. Help the user understand WHY and HOW, not just WHAT.
+BE COMPREHENSIVE yet ACCESSIBLE. Cover the full spectrum from beginner to advanced, but explain each level clearly. Use tables/structured format when it helps organization.
 
 Competition: {competition}
 User Level: {user_level}
 Tone: {tone}
 
-Response (be thorough, insightful, and practical):
+Response (be thorough, comprehensive, AND beginner-friendly):
 """
 
 class CompetitionOverviewAgent(BaseRAGRetrievalAgent):
