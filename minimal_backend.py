@@ -1914,6 +1914,32 @@ Author: {notebook_info['author']} | Votes: {notebook_info['votes']:,}
                     if data_result['success']:
                         data_info = data_result['data_info']
                         
+                        # Retrieve data description from ChromaDB
+                        description = data_info['description']
+                        if CHROMADB_AVAILABLE and chromadb_pipeline:
+                            try:
+                                print("[DEBUG] Retrieving data description from ChromaDB...")
+                                data_desc_results = chromadb_pipeline.retriever._get_collection().query(
+                                    query_texts=[query],
+                                    n_results=5,
+                                    where={
+                                        "$and": [
+                                            {"competition_slug": competition_slug},
+                                            {"section": "data_description"}
+                                        ]
+                                    }
+                                )
+                                
+                                if data_desc_results and data_desc_results['documents'] and data_desc_results['documents'][0]:
+                                    # Combine all retrieved sections
+                                    description = "\n\n".join([
+                                        doc for doc in data_desc_results['documents'][0]
+                                        if doc and len(doc) > 50
+                                    ])
+                                    print(f"[DEBUG] Retrieved {len(data_desc_results['documents'][0])} data description sections")
+                            except Exception as e:
+                                print(f"[DEBUG] Could not retrieve data description from ChromaDB: {e}")
+                        
                         # Use DataSectionAgent for intelligent summary
                         if AGENT_AVAILABLE:
                             try:
@@ -1925,7 +1951,7 @@ Author: {notebook_info['author']} | Votes: {notebook_info['votes']:,}
                                 agent_response = data_agent.run(
                                     competition=competition_slug,
                                     files=data_info['files'],
-                                    description=data_info['description'],
+                                    description=description,
                                     user_query=query
                                 )
                                 
