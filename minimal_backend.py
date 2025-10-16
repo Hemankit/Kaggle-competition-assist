@@ -1285,6 +1285,8 @@ def handle_component_query():
             response_type = "evaluation"
         elif any(word in query_lower for word in ['data', 'dataset', 'features', 'columns', 'what data', 'file', 'files', 'csv', 'json', 'train.csv', 'test.csv', 'size', 'big', 'how big', 'download']):
             response_type = "data_analysis"
+        elif any(word in query_lower for word in ['get started', 'getting started', 'how do i start', 'how should i start', 'where do i begin', 'where should i begin', 'first steps', 'starting out']):
+            response_type = "getting_started"
         elif any(word in query_lower for word in ['approach', 'strategy', 'how to', 'recommend', 'advice', 'what should i do']):
             response_type = "strategy"
         elif any(word in query_lower for word in ['explain', 'what is', 'about', 'describe', 'overview']):
@@ -2701,7 +2703,100 @@ Unable to fetch discussions at this time.
 8. Report back community feedback for personalized guidance
 
 **🎊 Let's make this competition a success!** Ask me anything about your approach, code, or strategy."""
+                
+                elif response_type == "getting_started":
+                    # Handle "how to get started" queries intelligently
+                    print(f"[DEBUG] Handling getting_started query for {competition_slug}")
+                    if AGENT_AVAILABLE and CHROMADB_AVAILABLE and chromadb_pipeline:
+                        try:
+                            # Get overview and notebook context
+                            overview_results = chromadb_pipeline.retriever._get_collection().query(
+                                query_texts=[f"getting started with {competition_slug}"],
+                                n_results=5,
+                                where={
+                                    "$and": [
+                                        {"competition_slug": competition_slug},
+                                        {"section": "overview"}
+                                    ]
+                                }
+                            )
+                            
+                            notebook_context = chromadb_pipeline.retriever.retrieve(
+                                f"beginner friendly starter approaches for {competition_slug}",
+                                top_k=3
+                            )
+                            
+                            context_str = ""
+                            if overview_results and overview_results['documents'] and overview_results['documents'][0]:
+                                context_str = "Competition Overview:\n" + "\n".join([
+                                    doc for doc in overview_results['documents'][0][:2]
+                                    if doc and len(doc) > 50
+                                ])
+                            
+                            if notebook_context:
+                                context_str += "\n\nCommon Starting Approaches:\n" + "\n".join([
+                                    f"- {doc.get('content', '')[:200]}"
+                                    for doc in notebook_context[:2]
+                                ])
+                            
+                            llm = get_llm_from_config(section="retrieval_agents")
+                            agent = CompetitionSummaryAgent(llm=llm)
+                            
+                            analysis_prompt = f"""User Query: {query}
+Competition: {competition_name}
 
+Context:
+{context_str if context_str else 'No cached data yet'}
+
+Provide practical, actionable advice for getting started that:
+1. Recommends specific first steps (e.g., "Load train.csv and check for missing values in Age, Cabin")
+2. References actual competition details (files, metrics, deadlines)
+3. Suggests 2-3 concrete starter approaches from successful notebooks
+4. Prioritizes quick wins to build momentum
+5. Is encouraging and beginner-friendly
+
+Be specific to THIS competition, not generic advice."""
+                            
+                            result = agent.summarize_sections(
+                                sections=[{"content": analysis_prompt, "title": "Getting Started"}],
+                                metadata={"competition": competition_slug}
+                            )
+                            
+                            response = f"""🚀 **Getting Started with {competition_name}**
+
+**Competition**: {competition_name}
+**User**: {kaggle_username}
+
+---
+
+{result}
+
+---
+
+*Personalized getting started guide powered by AI agent with competition-specific insights.*"""
+                        
+                        except Exception as e:
+                            print(f"[ERROR] Getting started agent failed: {e}")
+                            import traceback
+                            traceback.print_exc()
+                            response = None
+                    else:
+                        response = None
+                    
+                    if not response:
+                        response = f"""🚀 **Getting Started with {competition_name}**
+
+I'd love to give you personalized advice for getting started with **{competition_name}**, but the intelligent analysis system isn't available right now.
+
+**Your question**: {query}
+
+**To get started**, try:
+- "What data files are available?"
+- "What is the evaluation metric?"
+- "Show me top notebooks for beginners"
+
+*Requires agent system to be fully available.*"""
+                
                 elif response_type == "strategy":
                     # Handle strategy/approach questions intelligently
                     print(f"[DEBUG] Handling strategy query for {competition_slug}")
@@ -2789,6 +2884,13 @@ I'd love to help with your strategy for **{competition_name}**, but the intellig
                     # Handle overview/explanation questions intelligently
                     print(f"[DEBUG] Handling explanation/overview query for {competition_slug}")
                     
+                    # Try to get Kaggle API details first for fallback
+                    competition_details = {}
+                    try:
+                        competition_details = api_get_competition_details(competition_slug)
+                    except Exception as e:
+                        print(f"[DEBUG] Could not get API details: {e}")
+                    
                     if AGENT_AVAILABLE and CHROMADB_AVAILABLE and chromadb_pipeline:
                         try:
                             # Query ChromaDB for overview content
@@ -2806,10 +2908,21 @@ I'd love to help with your strategy for **{competition_name}**, but the intellig
                             # Build context from overview sections
                             context_str = ""
                             if overview_results and overview_results['documents'] and overview_results['documents'][0]:
-                                context_str = "\n\n".join([
+                                cached_docs = [
                                     doc for doc in overview_results['documents'][0][:5]
                                     if doc and len(doc) > 50  # Filter out tiny/useless sections
-                                ])
+                                ]
+                                if cached_docs:
+                                    context_str = "\n\n".join(cached_docs)
+                            
+                            # If no cached overview, use API details
+                            if not context_str and competition_details:
+                                context_str = f"""Competition: {competition_details.get('name', competition_name)}
+Description: {competition_details.get('description', 'N/A')}
+Category: {competition_details.get('category', 'N/A')}
+Deadline: {competition_details.get('deadline', 'N/A')}
+Evaluation: {competition_details.get('evaluation_metric', 'N/A')}
+Reward: {competition_details.get('reward', 'N/A')}"""
                             
                             # Use CompetitionSummaryAgent for intelligent synthesis
                             llm = get_llm_from_config(section="retrieval_agents")
@@ -2820,16 +2933,16 @@ I'd love to help with your strategy for **{competition_name}**, but the intellig
 
 Competition: {competition_name}
 
-Overview information:
-{context_str if context_str else 'No overview data cached yet'}
+Competition Information:
+{context_str if context_str else 'Limited information available'}
 
 Provide a clear, informative explanation that:
 1. Directly answers the user's question
-2. Provides competition-specific details
-3. Includes relevant context about objectives, data, and evaluation
-4. Is helpful and actionable
+2. Provides competition-specific details from the available information
+3. Explains the competition's objectives and goals
+4. Is helpful and encouraging
 
-Be conversational and informative."""
+Be conversational and informative. If limited data is available, be honest but still helpful."""
                             
                             result = agent.summarize_sections(
                                 sections=[{"content": analysis_prompt, "title": "Overview"}],
@@ -2847,7 +2960,7 @@ Be conversational and informative."""
 
 ---
 
-*Overview powered by AI agent with scraped competition data.*"""
+*Overview powered by AI agent with competition data.*"""
                             
                         except Exception as e:
                             print(f"[ERROR] Explanation agent failed: {e}")
@@ -2857,11 +2970,49 @@ Be conversational and informative."""
                     else:
                         response = None
                     
-                    # If agent not available or failed, use minimal fallback
+                    # If agent not available or failed, build intelligent fallback from API
+                    if not response and competition_details:
+                        desc = competition_details.get('description', '')
+                        category = competition_details.get('category', 'Data Science')
+                        deadline = competition_details.get('deadline', 'No deadline specified')
+                        metric = competition_details.get('evaluation_metric', 'See competition page')
+                        
+                        response = f"""📚 **Competition Overview: {competition_name}**
+
+**Competition**: {competition_name}
+**Category**: {category}
+**Deadline**: {deadline}
+**User**: {kaggle_username}
+
+---
+
+**📖 About This Competition:**
+
+{desc if desc else f"The {competition_name} is a {category} competition on Kaggle."}
+
+**🎯 Evaluation:**
+This competition uses **{metric}** to evaluate submissions.
+
+**🚀 Getting Started:**
+1. Download the competition data
+2. Explore the dataset and understand the features
+3. Review top notebooks for approaches
+4. Build a baseline model and iterate
+
+**💡 Next Steps:**
+- Ask: "What data files are available?"
+- Ask: "Show me top notebooks"
+- Ask: "What approaches work well?"
+
+---
+
+*Information from Kaggle API. For detailed analysis, the AI agent system needs to be available.*"""
+                    
+                    # Ultimate fallback if no data at all
                     if not response:
                         response = f"""📚 **Competition Overview: {competition_name}**
 
-I'd love to explain **{competition_name}** in detail, but the intelligent analysis system isn't available right now.
+I'd love to explain **{competition_name}** in detail, but I couldn't retrieve competition information right now.
 
 **Your question**: {query}
 
@@ -2870,7 +3021,7 @@ I'd love to explain **{competition_name}** in detail, but the intelligent analys
 - "Show me the top notebooks"
 - "What data files are available?"
 
-*Requires agent system to be fully available.*"""
+*Requires agent system and competition data to be available.*"""
                 
                 elif response_type == "technical":
                     # Handle technical/model questions intelligently
