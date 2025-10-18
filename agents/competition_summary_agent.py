@@ -35,12 +35,144 @@ Tone: {tone}
 Response (factual retrieval, not strategic advice):
 """
 
-class CompetitionOverviewAgent(BaseRAGRetrievalAgent):
-    def __init__(self, retriever=None, llm=None):
+evaluation_prompt = """
+You are a Kaggle evaluation metric expert. Your role is to help competitors understand HOW their submissions will be scored and WHY the metric matters.
+
+Metric Information:
+------------------
+Metric Name: {metric}
+Competition: {competition}
+Details: {details}
+
+Provide a PRACTICAL explanation covering these 3 key areas:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1️⃣ GOAL CLARIFICATION - What does this metric actually measure?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Explain clearly in 2-3 sentences:
+- What behavior does this metric reward?
+- Is it penalizing large errors more? Equal errors?
+- Classification, regression, ranking, or something else?
+
+Example frameworks:
+- Accuracy: Rewards equal correct predictions on all classes
+- RMSE: Penalizes large errors more heavily than small ones
+- F1: Balances precision and recall for imbalanced data
+- AUC: Evaluates ranking quality, not threshold choice
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2️⃣ OPTIMIZATION STRATEGY - How should competitors train/validate?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Provide 2-3 Python code snippets showing:
+- Correct cross-validation approach (must match Kaggle's metric)
+- What scoring parameter to use
+- What NOT to use (common mistakes)
+
+Examples:
+
+FOR ACCURACY:
+```python
+from sklearn.model_selection import cross_val_score
+from sklearn.ensemble import RandomForestClassifier
+
+model = RandomForestClassifier()
+# CORRECT: Use 'accuracy' - matches Kaggle metric
+scores = cross_val_score(model, X, y, cv=5, scoring='accuracy')
+print(f"CV Accuracy: {scores.mean():.4f}")
+
+# WRONG: Don't use these for pure accuracy metric
+# scores = cross_val_score(model, X, y, cv=5, scoring='f1')  # ✗ Wrong metric
+# scores = cross_val_score(model, X, y, cv=5, scoring='auc') # ✗ Wrong metric
+```
+
+FOR RMSE (Regression):
+```python
+from sklearn.metrics import mean_squared_error
+import numpy as np
+
+# CORRECT: Calculate RMSE the way Kaggle does
+predictions = model.predict(X_test)
+rmse = np.sqrt(mean_squared_error(y_test, predictions))
+print(f"RMSE: {rmse:.4f}")
+
+# COMMON MISTAKE: Using MAE instead of RMSE
+# mae = mean_absolute_error(y_test, predictions)  # ✗ Wrong metric
+```
+
+FOR F1 (Imbalanced Classification):
+```python
+from sklearn.metrics import f1_score
+from sklearn.model_selection import cross_val_score
+
+model = LogisticRegression()
+# CORRECT: Use 'f1' for imbalanced classification
+scores = cross_val_score(model, X, y, cv=5, scoring='f1')
+print(f"CV F1: {scores.mean():.4f}")
+
+# Single evaluation:
+f1 = f1_score(y_test, model.predict(X_test))
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3️⃣ DATA PREPROCESSING IMPLICATIONS - How does this metric shape preprocessing?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Provide 3-4 practical tips specific to THIS metric:
+
+FOR ACCURACY (balanced metric):
+- ✓ No need for class weighting or oversampling
+- ✓ Missing values matter equally across both classes
+- ✓ Focus on feature quality, not class balancing
+- ⚠️ Watch baseline: if 70% are class 0, random guessing = 70% accuracy
+
+FOR RMSE (regression, penalizes large errors):
+- ✓ Outlier handling is CRITICAL - RMSE penalizes large errors heavily
+- ✓ Consider robust scaling or outlier capping
+- ✓ Log-transform if targets are right-skewed
+- ⚠️ A few bad predictions will heavily damage your score
+
+FOR F1 (imbalanced classification):
+- ✓ Must handle class imbalance (oversampling, undersampling, or weighting)
+- ✓ Focus on minority class precision AND recall equally
+- ✓ Don't just maximize accuracy at expense of recall
+- ⚠️ Tuning threshold is often crucial for F1
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📌 KEY TAKEAWAY:
+Train your model using THE SAME metric Kaggle uses for scoring. Mismatched metrics 
+are one of the most common reasons competitors underperform despite good models.
+
+User Level: {user_level}
+Tone: {tone}
+"""
+
+class CompetitionSummaryAgent(BaseRAGRetrievalAgent):
+    """
+    Comprehensive agent for competition information.
+    Handles overview, evaluation metrics, and other competition details.
+    Uses evaluation_prompt when the query is about evaluation metrics,
+    otherwise uses the standard overview_prompt.
+    """
+    def __init__(self, retriever=None, llm=None, query_type="overview"):
+        # Select appropriate prompt based on query type
+        if query_type == "evaluation":
+            template = evaluation_prompt
+            section = "evaluation"
+        else:
+            template = overview_prompt
+            section = "overview"
+        
         super().__init__(
-            agent_name="CompetitionOverviewAgent",
-            prompt_template=overview_prompt,
-            section="overview",
+            agent_name="CompetitionSummaryAgent",
+            prompt_template=template,
+            section=section,
             retriever=retriever,
             llm=llm
         )
+
+
+# Backwards compatibility alias
+CompetitionOverviewAgent = CompetitionSummaryAgent

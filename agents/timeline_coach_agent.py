@@ -29,10 +29,27 @@ class TimelineCoachAgent(BaseAgent):
         self.chain = LLMChain(llm=self.llm, prompt=self.prompt)
 
     def run(self, query: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        response = (
-            f"{self.name}: I help users structure their Kaggle competition timelines effectively.\n\n"
-            f"Received query: {query}\nContext: {context}"
-        )
+        # ✅ FIXED: Actually use the LLM chain to generate meaningful response
+        try:
+            response = self.chain.run(
+                description=self.description,
+                query=query
+            )
+        except Exception as e:
+            # Fallback if LLM fails
+            response = (
+                f"I help structure Kaggle competition timelines. "
+                f"For your query: {query}\n\n"
+                f"Typical competition phases:\n"
+                f"1. Problem Understanding & EDA (~10-15%)\n"
+                f"2. Baseline & Validation Setup (~10%)\n"
+                f"3. Feature Engineering (~20-25%)\n"
+                f"4. Modeling & Experimentation (~25-30%)\n"
+                f"5. Ensembling & Optimization (~15-20%)\n"
+                f"6. Final Submission & Cleanup (~5-10%)\n\n"
+                f"Adjust these based on your available time and competition length."
+            )
+        
         return {
             "agent_name": self.name,
             "response": response,

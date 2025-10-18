@@ -1,0 +1,194 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                  ORCHESTRATOR ROLE - QUICK REFERENCE                          ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+YOUR MENTAL MODEL (Two-Stage Routing + Orchestrator)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Query: "What columns are in this data?"
+
+Stage 1 - SCRAPER ROUTING:
+┌─────────────────────────────────────────────┐
+│ Which scraper should fetch the data?         │
+│                                              │
+│ Keywords: "data", "columns"                  │
+│ Decision: Use DataScraper                    │
+│ Output: { data_file_info, columns, types }  │
+└──────────────────┬──────────────────────────┘
+                   │
+Stage 2 - AGENT ROUTING:
+┌──────────────────┴──────────────────────────┐
+│ Which agent(s) should process this?          │
+│                                              │
+│ Keywords: "columns", "data"                  │
+│ Decision: Use DataSectionAgent               │
+│ Input: { data_file_info from scraper }       │
+│ Output: Agent response                       │
+└──────────────────┬──────────────────────────┘
+                   │
+Stage 3 - ORCHESTRATION (if needed):
+┌──────────────────┴──────────────────────────┐
+│ Do multiple agents need to collaborate?      │
+│                                              │
+│ Decision: No (single agent handles it)      │
+│ Orchestrator: NOT INVOLVED                   │
+└─────────────────────────────────────────────┘
+
+PROS: Clean separation! Scrapers independent from agents.
+CONS: More complex routing logic.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+OUR CURRENT MODEL (One-Stage Routing + Optional Orchestration)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Query: "What columns are in this data?"
+
+Stage 1 - KEYWORD ROUTING:
+┌─────────────────────────────────────────────┐
+│ What response_type does this match?          │
+│                                              │
+│ Keywords: "data", "columns"                  │
+│ Decision: response_type = "data_analysis"    │
+│ Implicit: Will use DataSectionAgent          │
+│ Implicit: Will query ChromaDB data_desc     │
+└──────────────────┬──────────────────────────┘
+                   │
+Stage 2 - HANDLER EXECUTION:
+┌──────────────────┴──────────────────────────┐
+│ route: response_type == "data_analysis"      │
+│                                              │
+│ handler_used = "data_section_agent"         │
+│ Instantiate DataSectionAgent                 │
+│ Agent queries ChromaDB                       │
+│ Agent processes response                     │
+└──────────────────┬──────────────────────────┘
+                   │
+(Orchestrator NOT involved for simple query)   │
+                   │
+Stage 3 - RESPONSE:
+└──────────────────┘
+
+PROS: Simpler routing logic.
+CONS: Scraper/agent selection is coupled.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+COMPLEX QUERY - WHERE ORCHESTRATOR ENTERS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Query: "I'm stuck on accuracy. What should I try? Timeline?"
+
+Stage 1 - KEYWORD ROUTING:
+┌────────────────────────────────────────────────┐
+│ Keywords: "stuck", "what should I try",        │
+│           "timeline", "accuracy"               │
+│                                                 │
+│ Decision: response_type = "multi_agent"        │
+│ Reason: Complex query needs multiple agents    │
+└──────────────────┬─────────────────────────────┘
+                   │
+Stage 2 - HANDLER EXECUTION:
+┌──────────────────┴─────────────────────────────┐
+│ route: response_type == "multi_agent"          │
+│                                                 │
+│ handler_used = "component_orchestrator"       │
+│ Instantiate ComponentOrchestrator              │
+│ Call: orchestrator.run({                       │
+│   "query": query,                              │
+│   "mode": "crewai"  ← FRAMEWORK SELECTION      │
+│ })                                              │
+└──────────────────┬─────────────────────────────┘
+                   │
+Stage 3 - ORCHESTRATOR EXECUTION:
+┌──────────────────┴─────────────────────────────┐
+│ NOW ORCHESTRATOR TAKES OVER                    │
+│                                                 │
+│ ReasoningOrchestrator.run():                   │
+│ ├─ Parse intent                               │
+│ ├─ Find matching agents:                       │
+│ │  ├─ ProgressMonitorAgent                    │
+│ │  ├─ IdeaInitiatorAgent                      │
+│ │  └─ TimelineCoachAgent                      │
+│ ├─ Create CrewAI crew                          │
+│ ├─ Define tasks for each agent                 │
+│ ├─ Execute crew (agents collaborate)           │
+│ └─ Synthesize results                          │
+└──────────────────┬─────────────────────────────┘
+                   │
+Stage 4 - RESPONSE:
+┌──────────────────┴─────────────────────────────┐
+│ agents_used: [                                  │
+│   "progress_monitor_agent",                   │
+│   "idea_initiator_agent",                     │
+│   "timeline_coach_agent"                      │
+│ ]                                              │
+│ final_response: "synthesized from all 3"      │
+└─────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ORCHESTRATOR RESPONSIBILITIES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WHAT ORCHESTRATOR DOES:
+✅ Select collaboration framework (CrewAI/AutoGen/LangGraph/Dynamic)
+✅ Instantiate multiple agents with specialized roles
+✅ Define agent interactions (how they talk to each other)
+✅ Manage task delegation (which agent does what)
+✅ Synthesize results (combine outputs into coherent response)
+✅ Handle agent failures (fallback if an agent crashes)
+
+WHAT ORCHESTRATOR DOES NOT DO:
+❌ Decide which scraper to use
+❌ Route based on data sources
+❌ Select which ChromaDB section to query
+❌ Map query to retrieval strategies
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ORCHESTRATOR FRAMEWORKS (4 MODES)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Mode 1: CrewAI (DEFAULT)
+└─ Crew-based collaboration
+└─ Agents are Tasks in a Crew
+└─ Sequential or parallel execution
+└─ Built-in delegation & fallback
+
+Mode 2: AutoGen
+└─ Conversational multi-agent
+└─ Agents message each other directly
+└─ Automatic conversation management
+└─ Good for back-and-forth reasoning
+
+Mode 3: LangGraph
+└─ Workflow-based orchestration
+└─ Explicit graph structure (nodes/edges)
+└─ Structured reasoning paths
+└─ Good for deterministic workflows
+
+Mode 4: Dynamic
+└─ Self-selecting framework
+└─ Analyzes query and picks best framework
+└─ Adaptive based on complexity
+└─ Best of all worlds
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BOTTOM LINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ORCHESTRATOR = Multi-Agent Reasoning Engine
+├─ NOT for routing (that's keyword-based)
+├─ NOT for scraper selection (that's implicit in handlers)
+└─ FOR managing complex agent collaboration
+
+YOUR MENTAL MODEL = Better long-term architecture
+├─ Explicit scraper routing
+├─ Explicit agent routing
+└─ Orchestration as separate layer
+└─ ACTION: Refactor post-launch!
+
+CURRENT MODEL = Works great for MVP
+├─ Simpler routing
+├─ Orchestrator handles multi-agent scenarios
+└─ Can launch now!
+
+╚════════════════════════════════════════════════════════════════════════════════╝

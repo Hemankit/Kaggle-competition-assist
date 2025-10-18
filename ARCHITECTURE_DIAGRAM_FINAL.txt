@@ -1,0 +1,222 @@
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                    COMPLETE SYSTEM ARCHITECTURE                              ║
+║           (Showing where routing, retrieval, and orchestration fit)          ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ USER                                                                         │
+│ Input: "What columns are in this data?"                                    │
+│ Input: "I'm stuck on accuracy. What should I try? Timeline?"                │
+└────────────────┬────────────────────────────────────────────────────────────┘
+                 │
+                 ▼
+╔════════════════════════════════════════════════════════════════════════════╗
+║ LAYER 1: QUERY ROUTING (minimal_backend.py ~1273-1310)                    ║
+║ ─────────────────────────────────────────────────────────────────────────  ║
+║ RESPONSIBILITY: Retrieval Routing (implicit) + Response Type Selection    ║
+║                                                                             ║
+║ INPUT: User query                                                          ║
+║ PROCESS: Keyword matching against patterns                                ║
+║ OUTPUT: response_type string                                              ║
+║                                                                             ║
+║ ┌─────────────────────────────────────────────────────────────────┐        ║
+║ │ Decision Tree:                                                   │        ║
+║ │                                                                  │        ║
+║ │ Query 1: "What columns..."                                      │        ║
+║ │ Match: ["data", "columns"]                                      │        ║
+║ │ Decision: response_type = "data_analysis"                       │        ║
+║ │ Implicit: Use ChromaDB section "data_description"               │        ║
+║ │                                                                  │        ║
+║ │ Query 2: "I'm stuck..."                                         │        ║
+║ │ Match: ["stuck", "what should", "timeline"]                     │        ║
+║ │ Decision: response_type = "multi_agent"                         │        ║
+║ │ Implicit: Will use ComponentOrchestrator + CrewAI               │        ║
+║ └─────────────────────────────────────────────────────────────────┘        ║
+╚════════════════════════════════════════════════════════════════════════════╝
+                 │
+                 ├─────────────────────────────┬─────────────────────────────┐
+                 │                             │                             │
+                 ▼                             ▼                             ▼
+         ┌─────────────────┐         ┌──────────────────┐        ┌────────────────┐
+         │  QUERY 1 PATH   │         │  QUERY 2 PATH    │        │   OTHER TYPES  │
+         │  data_analysis  │         │  multi_agent     │        │   (code, error, │
+         │                 │         │                  │        │    etc.)        │
+         └────────┬────────┘         └────────┬─────────┘        └────────┬───────┘
+                  │                           │                           │
+╔═════════════════▼═══════════════════╗      │                           │
+║ LAYER 2A: SINGLE-AGENT HANDLER      ║      │                           │
+║ ─────────────────────────────────────║      │                           │
+║ response_type == "data_analysis"    ║      │                           │
+║                                     ║      │                           │
+║ RESPONSIBILITY:                    ║      │                           │
+║ - Instantiate DataSectionAgent     ║      │                           │
+║ - Call agent.run(query)            ║      │                           │
+║ - Set handler_used="data_..."      ║      │                           │
+║                                     ║      │                           │
+║ DOES NOT involve:                  ║      │                           │
+║ ❌ Orchestrator                     ║      │                           │
+║ ❌ CrewAI                           ║      │                           │
+║ ❌ AutoGen                          ║      │                           │
+║ ✅ ChromaDB retrieval (data_desc)   ║      │                           │
+║ ✅ Agent reasoning                  ║      │                           │
+╚═════════════════╗═══════════════════╝      │                           │
+                  │                          │                           │
+                  ▼                          ▼                           │
+           ┌─────────────────┐      ╔═════════════════════════════════════╗
+           │ AGENT 1 RUN:    │      ║ LAYER 2B: ORCHESTRATOR HANDLER      ║
+           │                 │      ║ ───────────────────────────────────  ║
+           │ DataSectionAgnt │      ║ response_type == "multi_agent"      ║
+           │ (no orchestrat) │      ║                                      ║
+           │                 │      ║ RESPONSIBILITY:                      ║
+           │ ├─ Parse query  │      ║ - Instantiate ComponentOrchestrator  ║
+           │ ├─ Query Chrome │      ║ - Call orchestrator.run(...)        ║
+           │ │ DB            │      ║ - Set handler_used="orchestrator"   ║
+           │ ├─ Format resp  │      ║                                      ║
+           │ └─ Return       │      ║ DOES involve:                        ║
+           │                 │      ║ ✅ ComponentOrchestrator             ║
+           └────────┬────────┘      ║ ✅ CrewAI (for reasoning)            ║
+                    │               ║ ✅ AutoGen (alt framework)           ║
+                    │               ║ ✅ LangGraph (alt framework)         ║
+                    │               ║ ✅ Agent instantiation               ║
+                    │               ║ ✅ Agent collaboration               ║
+                    │               ║                                      ║
+                    │               ║ DOES NOT involve:                    ║
+                    │               ║ ❌ ChromaDB retrieval (that's on agts)║
+                    │               ║ ❌ Keyword routing (already done)     ║
+                    │               ╚═════════════╤════════════════════════╝
+                    │                              │
+                    │                              ▼
+                    │                      ╔════════════════════════════════╗
+                    │                      ║ LAYER 3: ORCHESTRATOR          ║
+                    │                      ║ orchestrators/component_orch...║
+                    │                      ║ ────────────────────────────────║
+                    │                      ║ RESPONSIBILITY:                ║
+                    │                      ║ - Choose framework: CrewAI     ║
+                    │                      ║ - Instantiate agents:          ║
+                    │                      ║   ├─ ProgressMonitorAgent      ║
+                    │                      ║   ├─ IdeaInitiatorAgent        ║
+                    │                      ║   └─ TimelineCoachAgent        ║
+                    │                      ║ - Define task interactions     ║
+                    │                      ║ - Execute CrewAI crew          ║
+                    │                      ║ - Synthesize results           ║
+                    │                      ║                                ║
+                    │                      ║ DOES NOT:                      ║
+                    │                      ║ ❌ Do keyword routing           ║
+                    │                      ║ ❌ Select which scraper        ║
+                    │                      ║ ❌ Query ChromaDB directly     ║
+                    │                      ║ (agents do that)               ║
+                    │                      ╚════════════╤═══════════════════╝
+                    │                                   │
+                    │                                   ▼
+                    │                      ┌──────────────────────────┐
+                    │                      │ AGENT 2 RUN (w/o crew):  │
+                    │                      │                          │
+                    │                      │ ProgressMonitorAgent.run │
+                    │                      │ - Query comp data        │
+                    │                      │ - Analyze progress       │
+                    │                      │ - Return insights        │
+                    │                      └────────────┬─────────────┘
+                    │                                   │
+                    │                      ┌────────────▼─────────────┐
+                    │                      │ AGENT 3 RUN (w/o crew):  │
+                    │                      │                          │
+                    │                      │ IdeaInitiatorAgent.run   │
+                    │                      │ - Query discussion data  │
+                    │                      │ - Generate ideas         │
+                    │                      │ - Return ideas           │
+                    │                      └────────────┬─────────────┘
+                    │                                   │
+                    │                      ┌────────────▼─────────────┐
+                    │                      │ AGENT 4 RUN (w/o crew):  │
+                    │                      │                          │
+                    │                      │ TimelineCoachAgent.run   │
+                    │                      │ - Query notebook data    │
+                    │                      │ - Structure timeline     │
+                    │                      │ - Return timeline        │
+                    │                      └────────────┬─────────────┘
+                    │                                   │
+                    │                      ┌────────────▼─────────────┐
+                    │                      │ RESULT SYNTHESIS         │
+                    │                      │ (orchestrator combines)  │
+                    │                      │                          │
+                    │                      │ - Merge insights         │
+                    │                      │ - Create coherent respse │
+                    │                      │ - Return final output    │
+                    │                      └────────────┬─────────────┘
+                    │                                   │
+                    └───────────────────────┬───────────┘
+                                            │
+                                            ▼
+╔════════════════════════════════════════════════════════════════════════════╗
+║ LAYER 4: RESPONSE FORMATTING (minimal_backend.py ~3194)                   ║
+║ ────────────────────────────────────────────────────────────────────────   ║
+║ RESPONSIBILITY: Package results into JSON                                 ║
+║                                                                             ║
+║ Query 1 Response:                                                          ║
+║ {                                                                          ║
+║   "agents_used": ["data_section_agent"],                                  ║
+║   "confidence": 0.95,                                                     ║
+║   "system": "multi-agent",                                                ║
+║   "final_response": "Here are the columns: ..."                           ║
+║ }                                                                          ║
+║                                                                             ║
+║ Query 2 Response:                                                          ║
+║ {                                                                          ║
+║   "agents_used": [                                                        ║
+║     "progress_monitor_agent",                                             ║
+║     "idea_initiator_agent",                                               ║
+║     "timeline_coach_agent"                                                ║
+║   ],                                                                       ║
+║   "confidence": 0.95,                                                     ║
+║   "system": "multi-agent",                                                ║
+║   "final_response": "You're stuck because..., here's ideas..., timeline..."║
+║ }                                                                          ║
+╚════════════════════════════════════════════════════════════════════════════╝
+                                            │
+                                            ▼
+                                       ┌─────────────┐
+                                       │  FRONTEND   │
+                                       │  (Streamlit)│
+                                       │             │
+                                       │ Parse JSON  │
+                                       │ Display     │
+                                       │ Agent names │
+                                       │ Confidence  │
+                                       │ Response    │
+                                       └─────────────┘
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                        COMPONENT RESPONSIBILITIES                            ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║  COMPONENT               │  RETRIEVAL  │  REASONING  │  INTERACTION  │ ROUTE ║
+║  ────────────────────────┼─────────────┼─────────────┼───────────────┼──────║
+║  Keyword Router          │     ✅      │      ❌      │       ❌       │  ✅  ║
+║  Handler Dispatcher      │     ❌      │      ❌      │       ❌       │  ✅  ║
+║  Single-Agent Handlers   │     ✅      │      ✅      │       ❌       │  ❌  ║
+║  ComponentOrchestrator   │     ❌      │      ✅      │       ✅       │  ❌  ║
+║  Individual Agents       │     ✅      │      ✅      │       ❌       │  ❌  ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                         ANSWER TO YOUR QUESTION                              ║
+║                                                                               ║
+║  Q: "Is orchestrator only for routing the reasoning and interaction         ║
+║      (crewAI/Autogen) not the retrieval?"                                    ║
+║                                                                               ║
+║  A: YES! ✅                                                                  ║
+║                                                                               ║
+║     Orchestrator = Reasoning & Interaction Engine                           ║
+║     NOT = Retrieval Router                                                   ║
+║                                                                               ║
+║     Keyword Router = Retrieval Router (implicit)                            ║
+║     NOT = Multi-agent reasoner                                              ║
+║                                                                               ║
+║  They are two SEPARATE concerns!                                            ║
+║  ─────────────────────────────────                                          ║
+║  • Keyword router decides WHAT data                                         ║
+║  • Orchestrator decides HOW agents collaborate                              ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝

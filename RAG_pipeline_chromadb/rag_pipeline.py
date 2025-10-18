@@ -16,7 +16,7 @@ class ChromaDBRAGPipeline:
     but uses ChromaDB for vector storage and retrieval to avoid version conflicts.
     """
     
-    def __init__(self, collection_name: str = "kaggle_competition_data", embedding_model: str = "BAAI/bge-base-en"):
+    def __init__(self, collection_name: str = "kaggle_competition_data", embedding_model: str = "all-MiniLM-L6-v2"):
         """
         Initialize the ChromaDB RAG pipeline.
         
@@ -30,7 +30,9 @@ class ChromaDBRAGPipeline:
             import os
             
             # Initialize ChromaDB client with persistence
-            persist_dir = os.path.join(os.getcwd(), "chroma_db")
+            # Use parent directory of RAG_pipeline_chromadb (app root) for consistency
+            app_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            persist_dir = os.path.join(app_root, "chroma_db")
             os.makedirs(persist_dir, exist_ok=True)
             self.chroma_client = chromadb.PersistentClient(path=persist_dir)
             self.collection_name = collection_name

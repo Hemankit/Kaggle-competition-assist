@@ -217,9 +217,12 @@ def main(competition_slug: str):
     print(f"POPULATING ALL DATA FOR: {competition_slug}")
     print("="*70)
     
-    # Initialize ChromaDB
+    # Initialize ChromaDB with consistent embedding model
     print("\n[INFO] Connecting to ChromaDB...")
-    rag_pipeline = ChromaDBRAGPipeline(collection_name="kaggle_competition_data")
+    rag_pipeline = ChromaDBRAGPipeline(
+        collection_name="kaggle_competition_data",
+        embedding_model="all-MiniLM-L6-v2"  # Standard 384-dim model
+    )
     
     # Run all scrapers
     results = {
@@ -254,4 +257,5 @@ if __name__ == "__main__":
     competition = sys.argv[1] if len(sys.argv) > 1 else "titanic"
     success = main(competition)
     sys.exit(0 if success else 1)
+
 

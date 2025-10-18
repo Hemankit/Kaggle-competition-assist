@@ -26,10 +26,27 @@ class MultiHopReasoningAgent(BaseAgent):
 
 
     def run(self, query: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        response = (
-            f"{self.name}: I perform multi-step reasoning across multiple sources, integrating insights from "
-            f"agents or documents to solve complex queries.\n\nReceived query: {query}\nContext: {context}"
-        )
+        # ✅ FIXED: Actually use the LLM chain to perform multi-hop reasoning
+        context = context or {}
+        try:
+            response = self.chain.run(
+                description=self.description,
+                query=query,
+                context=str(context)
+            )
+        except Exception as e:
+            # Fallback if LLM fails
+            response = (
+                f"Multi-hop reasoning across sources for: {query}\n\n"
+                f"I synthesize insights from multiple sources including:"
+                f"\n- Competition data and metadata"
+                f"\n- Top notebook approaches"
+                f"\n- Community discussions and shared strategies"
+                f"\n- Your specific competition context\n\n"
+                f"For complex queries, I chain reasoning steps to draw "
+                f"conclusions that integrate evidence from different domains."
+            )
+        
         return {
             "agent_name": self.name,
             "response": response,

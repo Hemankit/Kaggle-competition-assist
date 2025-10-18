@@ -1249,6 +1249,12 @@ def handle_component_query():
         competition_slug = context.get('competition_slug', 'Unknown')
         print(f"[DEBUG] Extracted - Name: {competition_name}, User: {kaggle_username}, Slug: {competition_slug}")
 
+        # Initialize query_id for tracing throughout the function
+        query_id = str(uuid.uuid4())
+        
+        # Initialize handler_used to track which agent handles the query
+        handler_used = None
+        
         # Determine intent once so both paths can use it
         # PRIORITY ORDER: error_diagnosis > code_review > community_feedback > multi_agent > discussion > notebooks > evaluation > data > strategy > explanation > technical > greeting > general
         # Code handling has highest priority when code/errors are present
@@ -1286,7 +1292,15 @@ def handle_component_query():
         elif any(word in query_lower for word in ['i posted', 'i asked', 'i commented', 'they suggested', 'they said', 'community said', 'got feedback', 'received feedback', 'discussion feedback', '@']) and any(word in query_lower for word in ['thread', 'discussion', 'forum', 'suggested', 'recommended', 'said']):
             response_type = "community_feedback"
         
-        # MULTI-AGENT - Complex queries needing deep reasoning
+        # DATA FILES - What data is available (CHECK BEFORE MULTI_AGENT!)
+        elif any(word in query_lower for word in ['data', 'dataset', 'features', 'columns', 'what data', 'file', 'files', 'csv', 'json', 'train.csv', 'test.csv', 'size', 'big', 'how big', 'download', 'data file', 'available data', 'input data']):
+            response_type = "data_analysis"
+        
+        # EVALUATION - Metric, scoring, submission format (CHECK BEFORE MULTI_AGENT!)
+        elif any(word in query_lower for word in ['evaluation', 'evaluate', 'evaluated', 'metric', 'scoring', 'score', 'how is it scored', 'judged', 'judging', 'submission', 'submit', 'how to submit', 'submission format', 'submission file', 'leaderboard', 'ranked', 'graded']):
+            response_type = "evaluation"
+        
+        # MULTI-AGENT - Complex queries needing deep reasoning (CHECK AFTER SPECIFIC HANDLERS!)
         elif any(word in query_lower for word in ['stagnating', 'stagnant', 'stuck', 'progress', 'how am i doing', 'am i doing well', 'ideas', 'suggest approaches', 'what should i try', 'breakthrough', 'need help', 'next step', 'give me ideas', 'generate ideas', 'not improving', 'plateau']):
             response_type = "multi_agent"
         
@@ -1297,14 +1311,6 @@ def handle_component_query():
         # NOTEBOOKS - Show me examples, solutions, code
         elif any(word in query_lower for word in ['notebook', 'code', 'kernel', 'solution', 'example', 'implementation', 'top notebook', 'best notebook', 'winning solution', 'popular approach', 'show me', 'example code', 'sample code']):
             response_type = "notebooks"
-        
-        # EVALUATION - Metric, scoring, submission format
-        elif any(word in query_lower for word in ['evaluation', 'evaluate', 'evaluated', 'metric', 'scoring', 'score', 'how is it scored', 'judged', 'judging', 'submission', 'submit', 'how to submit', 'submission format', 'submission file', 'leaderboard', 'ranked', 'graded']):
-            response_type = "evaluation"
-        
-        # DATA FILES - What data is available
-        elif any(word in query_lower for word in ['data', 'dataset', 'features', 'columns', 'what data', 'file', 'files', 'csv', 'json', 'train.csv', 'test.csv', 'size', 'big', 'how big', 'download', 'data file', 'available data', 'input data']):
-            response_type = "data_analysis"
         
         # GETTING STARTED - First steps, beginner questions
         elif any(word in query_lower for word in ['get started', 'getting started', 'how do i start', 'how should i start', 'where do i begin', 'where should i begin', 'first steps', 'starting out', 'begin', 'beginner', 'new to this']):
@@ -1472,10 +1478,10 @@ def handle_component_query():
                             # Use ChromaDB retriever if available, otherwise fallback to mock
                             if CHROMADB_AVAILABLE and chromadb_pipeline:
                                 print("[DEBUG] Using ChromaDB retriever for agent")
-                                agent = CompetitionSummaryAgent(retriever=chromadb_pipeline, llm=llm)
+                                agent = CompetitionSummaryAgent(retriever=chromadb_pipeline, llm=llm, query_type="evaluation")
                             else:
                                 print("[DEBUG] ChromaDB not available, using mock retriever")
-                                agent = CompetitionSummaryAgent(llm=llm)
+                                agent = CompetitionSummaryAgent(llm=llm, query_type="evaluation")
                                 # Fallback: Mock fetch_sections to return our scraped text
                                 def mock_fetch(query_dict, top_k=5):
                                     return [{"content": detailed_evaluation}]
@@ -1513,6 +1519,8 @@ def handle_component_query():
 {agent_response}
 
 *Analysis powered by AI agent using competition data from Kaggle.*"""
+                            # ✅ TRACK: Evaluation agent handled this query
+                            handler_used = "competition_summary_agent"
                             
                             # ⚡ CACHE THE DETAILED AGENT RESPONSE for fast retrieval next time
                             if CHROMADB_AVAILABLE and chromadb_pipeline:
@@ -1965,6 +1973,8 @@ Author: {notebook_info['author']} | Votes: {notebook_info['votes']:,}
 **📁 Files:** {data_info['file_count']} | **Total Size:** {data_info['total_size'] / (1024*1024):.1f} MB
 
 *Data information powered by Kaggle API + intelligent scraping + ChromaDB caching*"""
+                                # ✅ TRACK: Data section agent handled this
+                                handler_used = "data_section_agent"
                                 
                                 # ⚡ CACHE THE DETAILED AGENT RESPONSE for fast retrieval next time
                                 if CHROMADB_AVAILABLE and chromadb_pipeline:
@@ -2285,8 +2295,9 @@ Error diagnosis functionality requires the AI agent system. Please ensure all de
                                 "context": orchestration_context
                             })
                             
-                            agent_response = orchestration_result.get('response', '')
-                            agents_used = orchestration_result.get('agents_used', [])
+                            # ✅ FIXED: Use correct field names from orchestrator output
+                            agent_response = orchestration_result.get('final_response', '')
+                            agents_used = orchestration_result.get('selected_agents', [])
                             
                             # Enrich response with expert guidelines
                             if GUIDELINE_EVALUATION_AVAILABLE:
@@ -3187,9 +3198,10 @@ Your query suggests you're looking for guidance on this Kaggle competition. This
                     "query": query,
                     "final_response": response,
                     "timestamp": datetime.now().isoformat(),
-                    "agents_used": ["intelligent_reasoning_agent"],
-                    "confidence": 0.85,
-                    "system": "intelligent_multiagent"
+                    "agents_used": [handler_used] if handler_used else ["fallback_agent"],
+                    "confidence": 0.95 if handler_used else (0.6 if response_type == "evaluation" else 0.5),
+                    "system": "multi-agent" if handler_used else "fallback",
+                    "query_id": query_id  # Include query_id for trace lookup
                 }), 200
                 
             except Exception as e:
@@ -3237,7 +3249,7 @@ Your query suggests you're looking for guidance on this Kaggle competition. This
                     
                     # Load LLM and initialize agent
                     llm = get_llm_from_config("default")
-                    agent = CompetitionSummaryAgent(llm=llm)
+                    agent = CompetitionSummaryAgent(llm=llm, query_type="evaluation")
                     
                     # Mock fetch_sections to return our scraped text
                     def mock_fetch(query_dict, top_k=5):
@@ -3325,12 +3337,11 @@ Your query suggests you're looking for guidance on this Kaggle competition. This
             )
 
         # 🔧 DEBUG: Record execution trace for LangGraph visualization
-        query_id = str(uuid.uuid4())
         execution_trace = {
             "query_id": query_id,
             "query": query,
             "timestamp": datetime.now().isoformat(),
-            "agents_used": ["fallback_agent"],
+            "agents_used": [handler_used] if handler_used else ["fallback_agent"],
             "nodes": ["preprocessing", "router", response_type, "aggregation"],
             "response_time_ms": 0,  # Fallback is instant
             "cache_hit": False,
@@ -3348,7 +3359,7 @@ Your query suggests you're looking for guidance on this Kaggle competition. This
             "query": query,
             "final_response": response,
             "timestamp": datetime.now().isoformat(),
-            "agents_used": ["fallback_agent"],
+            "agents_used": [handler_used] if handler_used else ["fallback_agent"],
             "confidence": 0.6 if response_type == "evaluation" else 0.5,
             "system": "fallback",
             "query_id": query_id  # Include query_id for trace lookup
