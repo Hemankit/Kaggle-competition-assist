@@ -78,12 +78,15 @@ AGENT_CAPABILITY_REGISTRY = {
 
 # === Registry for CrewAI (Autogen-style multi-agent reasoning orchestration) === #
 AUTOGEN_AGENT_REGISTRY = {
+    # ✅ FIX: Only include agents designed for reasoning/interaction orchestration
+    # RAG agents (discussion_helper, notebook_explainer) are single-agent handlers, not orchestrated
+    "progress_monitor": AGENT_CAPABILITY_REGISTRY["progress_monitor"],
     "multi_hop_reasoning": AGENT_CAPABILITY_REGISTRY["multi_hop_reasoning"],
     "error_diagnosis": AGENT_CAPABILITY_REGISTRY["error_diagnosis"],
     "code_feedback": AGENT_CAPABILITY_REGISTRY["code_feedback"],
-    "progress_monitor": AGENT_CAPABILITY_REGISTRY["progress_monitor"],
     "idea_initiator": AGENT_CAPABILITY_REGISTRY["idea_initiator"],
     "community_engagement": AGENT_CAPABILITY_REGISTRY["community_engagement"],
+    "timeline_coach": AGENT_CAPABILITY_REGISTRY["timeline_coach"],
 }
 
 def get_agent(name: str, mode: str = "default", llm_config: Optional[dict] = None):

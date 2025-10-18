@@ -1260,7 +1260,7 @@ def handle_component_query():
         
         # Initialize handler_used to track which agent handles the query
         handler_used = None
-        
+
         # Determine intent once so both paths can use it
         # PRIORITY ORDER: error_diagnosis > code_review > community_feedback > multi_agent > discussion > notebooks > evaluation > data > strategy > explanation > technical > greeting > general
         # Code handling has highest priority when code/errors are present
@@ -1500,9 +1500,9 @@ def handle_component_query():
                             }]
                             
                             metadata = {
-                                "user_level": "intermediate",
-                                "tone": "helpful",
-                                "competition": competition_name,
+                                    "user_level": "intermediate",
+                                    "tone": "helpful",
+                                    "competition": competition_name,
                                 "metric": eval_metric,
                                 "details": detailed_evaluation  # ✅ FIX: Provide details for evaluation prompt
                             }
@@ -2334,6 +2334,10 @@ Error diagnosis functionality requires the AI agent system. Please ensure all de
                             agent_response = orchestration_result.get('final_response', '')
                             agents_used = orchestration_result.get('selected_agents', [])
                             
+                            # ✅ TRACK: Mark orchestration as handled
+                            if agents_used and len(agents_used) > 0:
+                                handler_used = f"orchestrated_{agents_used[0]}"
+                            
                             # Enrich response with expert guidelines
                             if GUIDELINE_EVALUATION_AVAILABLE:
                                 try:
@@ -2899,7 +2903,7 @@ I'd love to give you personalized advice for getting started with **{competition
 - "Show me top notebooks for beginners"
 
 *Requires agent system to be fully available.*"""
-                
+
                 elif response_type == "strategy":
                     # Handle strategy/approach questions intelligently
                     print(f"[DEBUG] Handling strategy query for {competition_slug}")
@@ -3052,7 +3056,7 @@ Be conversational and informative. If limited data is available, be honest but s
                                 metadata={"competition": competition_slug}
                             )
                             
-                            response = f"""📚 **Competition Overview: {competition_name}**
+                    response = f"""📚 **Competition Overview: {competition_name}**
 
 **Competition**: {competition_name}
 **User**: {kaggle_username}
@@ -3176,8 +3180,14 @@ I'd love to explain **{competition_name}** in detail, but I couldn't retrieve co
                                 "context": orchestration_context
                             })
                             
-                            agent_response = orchestration_result.get('response', '')
+                            # ✅ FIXED: Use correct field names from orchestrator output
+                            agent_response = orchestration_result.get('final_response', '')
                             agents_used = orchestration_result.get('agents_used', [])
+                            
+                            # ✅ TRACK: Multi-agent orchestration succeeded
+                            if agents_used and len(agents_used) > 0:
+                                handler_used = f"orchestrated_{'_'.join(agents_used[:3])}"  # Track which agents were used
+                                print(f"[DEBUG] Orchestration successful with agents: {agents_used}")
                             
                             agents_list = ", ".join(agents_used) if agents_used else "Multi-Agent System"
                             response = f"""⚙️ **Technical Analysis for {competition_name}**
@@ -3325,10 +3335,10 @@ Your query suggests you're looking for guidance on this Kaggle competition. This
                     }]
                     
                     metadata = {
-                        "user_level": "intermediate",
-                        "tone": "helpful",
-                        "competition": competition_name,
-                        "metric": eval_metric
+                            "user_level": "intermediate",
+                            "tone": "helpful",
+                            "competition": competition_name,
+                            "metric": eval_metric
                     }
                     
                     # Use summarize_sections to avoid repetition

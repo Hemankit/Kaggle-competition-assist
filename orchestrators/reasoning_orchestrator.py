@@ -17,16 +17,27 @@ class ReasoningOrchestrator:
             "track experiments, and push back if the user skips key phases (like EDA or validation)."
         )
 
-    def _instantiate_agent(self, agent_name: str) -> BaseAgent:
+    def _instantiate_agent(self, agent_name: str):
         entry = self.agent_registry.get(agent_name)
         if not entry:
             raise ValueError(f"Agent '{agent_name}' not found in AUTOGEN_AGENT_REGISTRY.")
         
         agent_class = entry.get("agent_class")
-        if not issubclass(agent_class, BaseAgent):
-            raise TypeError(f"Agent '{agent_name}' does not implement BaseAgent.")
+        # ✅ FIX: Initialize agents with required parameters (llm)
+        # All agents in AUTOGEN_AGENT_REGISTRY are reasoning/interaction agents that need LLM
         
-        return agent_class()
+        # Get LLM from config
+        llm = get_llm_from_config(section="reasoning_and_interaction")
+        
+        try:
+            return agent_class(llm=llm)
+        except TypeError as e:
+            print(f"[DEBUG] Failed to instantiate {agent_name} with llm: {e}")
+            # Last resort: try with no arguments
+            try:
+                return agent_class()
+            except Exception as e2:
+                raise ValueError(f"Could not instantiate agent '{agent_name}': {e2}")
 
     def route_and_create_crew(self, user_query: str, mode: str = None) -> dict:
         parsed_intent = parse_user_intent(user_query)
@@ -43,7 +54,12 @@ class ReasoningOrchestrator:
                 reasoning_style=reasoning_style
             )
             for match in matches:
-                matched_agents.add(match["agent"])
+                agent_name = match["agent"]
+                # ✅ FIX: Only include agents that are available for multi-agent orchestration
+                if agent_name in self.agent_registry:
+                    matched_agents.add(agent_name)
+                else:
+                    print(f"[DEBUG] Skipping agent '{agent_name}' - not in orchestration registry")
 
         # Log execution trace (activated agents) for this query
         self.utils.log_execution_trace(list(matched_agents))
