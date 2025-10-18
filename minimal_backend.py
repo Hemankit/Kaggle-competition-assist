@@ -2520,7 +2520,7 @@ Please ensure all dependencies are installed."""
                                         query_embeddings=[chromadb_pipeline.retriever.embedding_model.encode("pinned discussion").tolist()],
                                         where={"$and": [
                                             {"competition_slug": competition_slug},
-                                            {"section": "discussion"},
+                                            {"section": "discussions"},  # ✅ FIX: Use plural form like notebooks
                                             {"is_pinned": True}
                                         ]},
                                         n_results=10,
@@ -2534,19 +2534,35 @@ Please ensure all dependencies are installed."""
                                         query_embeddings=[chromadb_pipeline.retriever.embedding_model.encode("recent discussion").tolist()],
                                         where={"$and": [
                                             {"competition_slug": competition_slug},
-                                            {"section": "discussion"}
+                                            {"section": "discussions"}  # ✅ FIX: Use plural form
                                         ]},
                                         n_results=10,
                                         include=["documents", "metadatas"]
                                     )
                                 else:
-                                    # Detect if this is a specific discussion request (deep dive)
-                                    specific_request_keywords = ['explain', 'summarize', 'analyze', 'titled', 'about', 'regarding']
-                                    is_specific_request = any(word in query_lower for word in specific_request_keywords)
+                                    # Detect query type:
+                                    # - "analyze": User wants ONE specific discussion explained
+                                    # - "search": User wants to find/synthesize multiple discussions about a topic
+                                    # - "list": User just wants to browse
+                                    
+                                    # Single discussion deep dive keywords
+                                    single_disc_keywords = ['explain this', 'summarize this', 'analyze this', 'titled', 'the discussion']
+                                    # Multi-discussion search keywords
+                                    search_keywords = ['are there', 'any discussions', 'discussions about', 'find discussions', 'what do people say']
+                                    
+                                    is_single_request = any(word in query_lower for word in single_disc_keywords)
+                                    is_search_request = any(word in query_lower for word in search_keywords)
                                     
                                     # Semantic search for relevant discussions
                                     print(f"[DEBUG] Semantic search for: {query}")
-                                    query_type = "analyze" if is_specific_request else "list"
+                                    
+                                    if is_single_request:
+                                        query_type = "analyze"  # Deep dive on one discussion
+                                    elif is_search_request:
+                                        query_type = "search"  # Search and synthesize multiple
+                                    else:
+                                        query_type = "list"  # Just browse/list
+                                    
                                     print(f"[DEBUG] Query type: {query_type}")
                                     
                                     query_embedding = chromadb_pipeline.retriever.embedding_model.encode(query).tolist()
@@ -2554,9 +2570,9 @@ Please ensure all dependencies are installed."""
                                         query_embeddings=[query_embedding],
                                         where={"$and": [
                                             {"competition_slug": competition_slug},
-                                            {"section": "discussion"}
+                                            {"section": "discussions"}  # ✅ FIX: Use plural form
                                         ]},
-                                        n_results=5,
+                                        n_results=5,  # ✅ Get top 5 relevant discussions
                                         include=["documents", "metadatas", "distances"]
                                     )
                                 
@@ -2696,11 +2712,18 @@ Date: {metadata.get('date', 'Unknown')}
                                         llm=llm
                                     )
                                     
-                                    # For analyze queries, only pass the top discussion
+                                    # ✅ FIX: Pass all discussions for search/list, only first for analyze
                                     discussions_to_analyze = retrieved_discussions
                                     if query_type == "analyze":
+                                        # Single discussion deep dive - only pass the most relevant one
                                         discussions_to_analyze = [retrieved_discussions[0]]
                                         print(f"[DEBUG] Analyze mode: passing only top discussion to agent")
+                                    elif query_type == "search":
+                                        # Search query - pass all 5 discussions for synthesis
+                                        print(f"[DEBUG] Search mode: passing {len(discussions_to_analyze)} discussions for synthesis")
+                                    else:
+                                        # List query - pass all for browsing
+                                        print(f"[DEBUG] List mode: passing {len(discussions_to_analyze)} discussions for listing")
                                     
                                     # Run agent
                                     agent_result = discussion_agent.run(
@@ -2709,6 +2732,9 @@ Date: {metadata.get('date', 'Unknown')}
                                         competition=competition_slug,
                                         query_type=query_type
                                     )
+                                    
+                                    # ✅ TRACK: Successfully handled by discussion_helper_agent
+                                    handler_used = "discussion_helper_agent"
                                     
                                     response = f"""💬 **Community Discussions for {competition_name}**
 

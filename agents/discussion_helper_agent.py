@@ -61,6 +61,31 @@ Keep it concise and informative.
 """
 
 
+# Prompt for searching/synthesizing multiple discussions
+search_discussions_prompt = """You are a Kaggle discussion search agent. Your role is to analyze multiple discussions and synthesize findings related to the user's query.
+
+User Query: {user_query}
+Competition: {competition}
+
+Retrieved Discussions:
+{discussions_content}
+
+TASK: Analyze these discussions and provide a comprehensive answer to the user's query.
+
+1. **Directly answer the query**: If the user asked "Are there discussions about X?", say YES/NO clearly
+2. **Synthesize relevant findings**: Summarize what the discussions say about the topic
+3. **List specific discussions**: Show which discussions are most relevant with titles/authors
+4. **Identify patterns**: Note common themes, approaches, or solutions mentioned across discussions
+
+BE COMPREHENSIVE but CONCISE:
+- If NO discussions match: Say so clearly, then suggest related topics found
+- If discussions match: Synthesize the key points, don't just list them
+- Focus on FACTS and INFORMATION shared, not advice
+
+Format your response clearly using markdown for readability.
+"""
+
+
 class DiscussionHelperAgent(BaseRAGRetrievalAgent):
     """
     Agent for helping users navigate and understand Kaggle competition discussions.
@@ -89,6 +114,10 @@ class DiscussionHelperAgent(BaseRAGRetrievalAgent):
         self.analyze_chain = LLMChain(
             llm=self.llm,
             prompt=PromptTemplate.from_template(analyze_discussion_prompt)
+        )
+        self.search_chain = LLMChain(
+            llm=self.llm,
+            prompt=PromptTemplate.from_template(search_discussions_prompt)
         )
     
     def format_discussions_list(self, discussions: List[Dict[str, Any]]) -> str:
@@ -197,6 +226,43 @@ To get detailed analysis, the system would need to fetch the full post content, 
         engagement_tip = self._generate_engagement_tip(discussion, user_query)
         return response + engagement_tip
     
+    def search_discussions(
+        self,
+        discussions: List[Dict[str, Any]],
+        user_query: str,
+        competition: str
+    ) -> str:
+        """
+        Search and synthesize findings from multiple discussions.
+        For queries like: "Are there discussions about X?", "Find discussions about Y"
+        """
+        # Format discussions with content for LLM analysis
+        discussions_content = []
+        for i, disc in enumerate(discussions, 1):
+            metadata = disc.get('metadata', {})
+            content = disc.get('content', '')
+            
+            title = metadata.get('title', 'Unknown')
+            author = metadata.get('author', 'Unknown')
+            date = metadata.get('date', 'Unknown')
+            
+            disc_text = f"""**Discussion {i}: {title}**
+By: {author} | {date}
+Content Preview: {content[:500]}...
+"""
+            discussions_content.append(disc_text)
+        
+        formatted_content = "\n\n".join(discussions_content)
+        
+        # Use LLM to synthesize findings
+        response = self.search_chain.run(
+            user_query=user_query,
+            competition=competition,
+            discussions_content=formatted_content
+        )
+        
+        return response
+    
     def _generate_engagement_tip(
         self,
         discussion: Dict[str, Any],
@@ -278,7 +344,7 @@ Clear, specific questions typically get better responses from the community!
             discussions: Retrieved discussions from ChromaDB
             user_query: User's question
             competition: Competition name/slug
-            query_type: "list" or "analyze"
+            query_type: "list", "search", or "analyze"
         
         Returns:
             Dict with agent response
@@ -286,11 +352,14 @@ Clear, specific questions typically get better responses from the community!
         try:
             if not discussions:
                 response = f"No discussions found for your query: '{user_query}'"
-            elif query_type == "analyze" and len(discussions) == 1:
+            elif query_type == "analyze":
                 # Single discussion deep dive
                 response = self.analyze_discussion(discussions[0], user_query, competition)
+            elif query_type == "search":
+                # Search and synthesize multiple discussions
+                response = self.search_discussions(discussions, user_query, competition)
             else:
-                # Multiple discussions or list query
+                # List query (browsing)
                 response = self.list_discussions(discussions, user_query, competition)
             
             return {
