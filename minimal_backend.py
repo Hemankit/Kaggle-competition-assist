@@ -1307,7 +1307,7 @@ def handle_component_query():
             response_type = "evaluation"
         
         # MULTI-AGENT - Complex queries needing deep reasoning (CHECK AFTER SPECIFIC HANDLERS!)
-        elif any(word in query_lower for word in ['stagnating', 'stagnant', 'stuck', 'progress', 'how am i doing', 'am i doing well', 'ideas', 'suggest approaches', 'what should i try', 'breakthrough', 'need help', 'next step', 'give me ideas', 'generate ideas', 'not improving', 'plateau']):
+        elif any(word in query_lower for word in ['stagnating', 'stagnant', 'stuck', 'progress', 'how am i doing', 'am i doing well', 'ideas', 'suggest approaches', 'what should i try', 'breakthrough', 'need help', 'next step', 'give me ideas', 'generate ideas', 'not improving', 'plateau', 'timeline', 'create a timeline', 'help me plan', 'schedule']):
             response_type = "multi_agent"
         
         # COMMUNITY/DISCUSSIONS - What are people talking about
