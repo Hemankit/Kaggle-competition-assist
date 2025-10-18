@@ -48,22 +48,26 @@ class ReasoningOrchestrator:
         mode = mode or parsed_intent.get("recommended_mode", "crewai")
 
         matched_agents = set()
+        print(f"[DEBUG] Processing {len(subintents)} subintents: {subintents}")
         for subintent in subintents:
             matches = find_agents_by_subintent(
                 subintent=subintent,
                 reasoning_style=reasoning_style
             )
+            print(f"[DEBUG] Subintent '{subintent}' found {len(matches)} matches: {[m['agent'] for m in matches]}")
             for match in matches:
                 agent_name = match["agent"]
                 # ✅ FIX: Only include agents that are available for multi-agent orchestration
                 if agent_name in self.agent_registry:
                     matched_agents.add(agent_name)
+                    print(f"[DEBUG] ✅ Including agent '{agent_name}' for orchestration")
                 else:
-                    print(f"[DEBUG] Skipping agent '{agent_name}' - not in orchestration registry")
+                    print(f"[DEBUG] ❌ Skipping agent '{agent_name}' - not in orchestration registry")
 
         # Log execution trace (activated agents) for this query
         self.utils.log_execution_trace(list(matched_agents))
 
+        print(f"[DEBUG] Final matched agents after filtering: {list(matched_agents)}")
         if not matched_agents:
             return {"error": "No agents matched. Please rephrase your query."}
 
@@ -85,7 +89,7 @@ class ReasoningOrchestrator:
                 tasks.append(task)
 
             crew = Crew(agents=agent_objs, tasks=tasks)
-            final_output = crew.run()
+            final_output = crew.kickoff()  # ✅ FIX: CrewAI uses kickoff() not run()
 
             return {
                 "structured_intent": parsed_intent,

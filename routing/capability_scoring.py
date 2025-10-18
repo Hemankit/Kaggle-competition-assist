@@ -11,13 +11,17 @@ def find_agents_by_subintent(
     min_score_threshold: float = 0.3
 ) -> List[Dict[str, float]]:
     matches = []
+    
+    # ✅ FIX: Normalize subintent by replacing spaces with underscores
+    normalized_subintent = subintent.replace(" ", "_").lower()
 
     for agent_name, metadata in AGENT_CAPABILITY_REGISTRY.items():
         score = 0.0
         explanation = []
 
-        # Capability match
-        if subintent in metadata.get("capabilities", []):
+        # Capability match (normalized)
+        capabilities = [c.replace(" ", "_").lower() for c in metadata.get("capabilities", [])]
+        if normalized_subintent in capabilities or subintent in metadata.get("capabilities", []):
             score += 0.6
             explanation.append("capability match (+0.6)")
 
@@ -26,8 +30,9 @@ def find_agents_by_subintent(
             score += 0.3
             explanation.append("reasoning style match (+0.3)")
 
-        # Tag match
-        if subintent in metadata.get("tags", []):
+        # Tag match (normalized)
+        tags = [t.replace(" ", "_").lower() for t in metadata.get("tags", [])]
+        if normalized_subintent in tags or subintent in metadata.get("tags", []):
             score += 0.2
             explanation.append("tag match (+0.2)")
 

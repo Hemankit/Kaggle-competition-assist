@@ -3056,7 +3056,7 @@ Be conversational and informative. If limited data is available, be honest but s
                                 metadata={"competition": competition_slug}
                             )
                             
-                    response = f"""📚 **Competition Overview: {competition_name}**
+                            response = f"""📚 **Competition Overview: {competition_name}**
 
 **Competition**: {competition_name}
 **User**: {kaggle_username}

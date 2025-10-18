@@ -22,9 +22,9 @@ AGENT_CAPABILITY_REGISTRY = {
     },
     "timeline_coach": {
         "agent_class": TimelineCoachAgent,
-        "capabilities": ["planning", "milestones", "deadline_tracking"],
+        "capabilities": ["planning", "milestones", "deadline_tracking", "structuring_information"],
         "reasoning_styles": ["timeline", "project_management"],
-        "tags": ["calendar", "schedule"],
+        "tags": ["calendar", "schedule", "planning"],
     },
     "notebook_explainer": {
         "agent_class": NotebookExplainerAgent,
@@ -46,15 +46,15 @@ AGENT_CAPABILITY_REGISTRY = {
     },
     "progress_monitor": {
         "agent_class": ProgressMonitorAgent,
-        "capabilities": ["track_progress", "benchmarking", "suggest_next_steps"],
+        "capabilities": ["track_progress", "benchmarking", "suggest_next_steps", "progress", "performance", "status"],
         "reasoning_styles": ["progressive", "timeline_based"],
-        "tags": ["planning", "feedback", "monitoring"],
+        "tags": ["planning", "feedback", "monitoring", "progress", "performance"],
     },
     "multi_hop_reasoning": {
         "agent_class": MultiHopReasoningAgent,
-        "capabilities": ["multihop_reasoning", "graph_reasoning", "complex_logic"],
+        "capabilities": ["multihop_reasoning", "graph_reasoning", "complex_logic", "metrics", "ranking"],
         "reasoning_styles": ["stepwise", "chained", "contrastive"],
-        "tags": ["graph", "advanced", "multiagent"],
+        "tags": ["graph", "advanced", "multiagent", "reasoning"],
     },
     "error_diagnosis": {
         "agent_class": ErrorDiagnosisAgent,
@@ -64,9 +64,9 @@ AGENT_CAPABILITY_REGISTRY = {
     },
     "idea_initiator": {
         "agent_class": IdeaInitiatorAgent,
-        "capabilities": ["idea_generation", "strategy_recommendation", "approach_suggestion"],
+        "capabilities": ["idea_generation", "strategy_recommendation", "approach_suggestion", "project_ideas", "recommendations", "beginner_friendly", "getting_started", "performance_tuning", "strategy_guidance"],
         "reasoning_styles": ["strategic", "creative", "analytical"],
-        "tags": ["brainstorming", "starter", "ideas", "strategy"],
+        "tags": ["brainstorming", "starter", "ideas", "strategy", "recommendations"],
     },
     "community_engagement": {
         "agent_class": CommunityEngagementAgent,
