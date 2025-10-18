@@ -155,7 +155,7 @@ if CHROMADB_AVAILABLE:
     try:
         chromadb_pipeline = ChromaDBRAGPipeline(
             collection_name="kaggle_competition_data",
-            embedding_model="BAAI/bge-base-en"
+            embedding_model="all-MiniLM-L6-v2"  # ✅ FIX: Match collection's embedding model (384-dim)
         )
         print("[OK] ChromaDB pipeline initialized successfully")
     except Exception as e:
@@ -392,9 +392,10 @@ def check_chromadb_for_notebooks(competition_slug: str, notebook_path: str = Non
     try:
         print(f"[DEBUG] Checking ChromaDB for notebooks in {competition_slug}...")
         
-        # Query ChromaDB with competition-specific query
+        # ✅ FIX: Use metadata filtering instead of semantic search for reliable retrieval
         query = f"notebooks code for {competition_slug}"
-        retrieved_docs = chromadb_pipeline.retriever.retrieve(query, top_k=10)
+        where_filter = {"$and": [{"section": "notebooks"}, {"competition_slug": competition_slug}]}
+        retrieved_docs = chromadb_pipeline.retriever.retrieve(query, top_k=10, where=where_filter)
         
         print(f"[DEBUG] Retrieved {len(retrieved_docs)} documents from ChromaDB")
         
@@ -606,7 +607,7 @@ def fetch_and_store_notebooks(competition_slug: str, max_notebooks: int = 5, min
                     try:
                         documents_to_index = [{
                             "content": full_content,
-                            "section": "code",
+                            "section": "notebooks",  # ✅ FIX: Use consistent section name
                             "title": metadata['title'],
                             "deep_scraped": False,
                             "url": f"kaggle://competition/{competition_slug}/notebook/{metadata['ref']}",
@@ -1244,9 +1245,14 @@ def handle_component_query():
         
         # Extract common context early so both intelligent and fallback paths can use it
         print(f"[DEBUG] Received context: {context}")
+        
+        # ✅ FIX: Extract competition_id from request data (frontend sends it this way)
+        competition_id_from_request = data.get("competition_id", None)
+        
         competition_name = context.get('competition_name', 'Unknown')
         kaggle_username = context.get('kaggle_username', 'Unknown')
-        competition_slug = context.get('competition_slug', 'Unknown')
+        # Use competition_id from request if available, otherwise fall back to context
+        competition_slug = competition_id_from_request or context.get('competition_slug', 'Unknown')
         print(f"[DEBUG] Extracted - Name: {competition_name}, User: {kaggle_username}, Slug: {competition_slug}")
 
         # Initialize query_id for tracing throughout the function
@@ -1558,6 +1564,8 @@ def handle_component_query():
 {detailed_evaluation}
 
 *This information is based on actual competition data from Kaggle API.*"""
+                            # ✅ TRACK: Still handled by competition_summary_agent (fallback path)
+                            handler_used = "competition_summary_agent"
                     else:
                         # No agent or no detailed evaluation - use simple template
                         print(f"[DEBUG] Agent not available or no evaluation data, using template")
@@ -1574,6 +1582,8 @@ def handle_component_query():
 {detailed_evaluation or 'Check the competition page for detailed evaluation criteria.'}
 
 *This information is based on actual competition data from Kaggle API.*"""
+                        # ✅ TRACK: Still handled by competition_summary_agent (template path)
+                        handler_used = "competition_summary_agent"
 
                 elif response_type == "notebooks":
                     # Handle notebook/code queries
@@ -1593,7 +1603,9 @@ def handle_component_query():
                         if CHROMADB_AVAILABLE and chromadb_pipeline:
                             try:
                                 query_text = f"top notebooks code for {competition_slug}"
-                                retrieved_docs = chromadb_pipeline.retriever.retrieve(query_text, top_k=5)
+                                # ✅ FIX: Use metadata filtering for reliable retrieval (ChromaDB requires $and for multiple conditions)
+                                where_filter = {"$and": [{"section": "notebooks"}, {"competition_slug": competition_slug}]}
+                                retrieved_docs = chromadb_pipeline.retriever.retrieve(query_text, top_k=5, where=where_filter)
                                 
                                 print(f"[DEBUG] Retrieved {len(retrieved_docs)} notebooks from ChromaDB")
                                 
@@ -1643,13 +1655,15 @@ def handle_component_query():
                                 
                                 print(f"[INFO] Processing {notebooks_to_process} notebook(s) (skipping first {skip_first_n})...", flush=True)
                                 print(f"[INFO] User wants more: {wants_more}, Requested count: {requested_count}", flush=True)
+                                print(f"[DEBUG] retrieved_docs length: {len(retrieved_docs)}", flush=True)
                                 
                                 # Step 1: Check cache for each notebook (with deduplication)
                                 seen_paths = set()
                                 doc_count = 0
                                 skipped_count = 0
                                 
-                                for doc in retrieved_docs:
+                                for idx, doc in enumerate(retrieved_docs):
+                                    print(f"[DEBUG] Loop iteration {idx+1}/{len(retrieved_docs)}, doc_count={doc_count}, notebooks_to_process={notebooks_to_process}", flush=True)
                                     if doc_count >= notebooks_to_process:
                                         break
                                     
@@ -1661,12 +1675,15 @@ def handle_component_query():
                                     votes = metadata.get('votes', 0)
                                     notebook_path = metadata.get('notebook_path', '')
                                     
+                                    # ✅ FIX: Use title+author as unique ID if notebook_path is missing (old notebooks)
+                                    unique_id = notebook_path if notebook_path else f"{title}|{author}"
+                                    
                                     # Skip duplicates
-                                    if notebook_path in seen_paths:
+                                    if unique_id in seen_paths:
                                         print(f"[SKIP] Duplicate notebook: {title}")
                                         continue
                                     
-                                    seen_paths.add(notebook_path)
+                                    seen_paths.add(unique_id)
                                     
                                     # Skip first N notebooks if requested (for "show more")
                                     if skipped_count < skip_first_n:
@@ -1678,11 +1695,13 @@ def handle_component_query():
                                     i = doc_count
                                     
                                     # Store metadata for display
+                                    # ✅ FIX: Generate search URL if notebook_path is missing
+                                    display_path = notebook_path if notebook_path else f"search?q={title.replace(' ', '+')}"
                                     notebook_info = {
                                         'title': title,
                                         'author': author,
                                         'votes': votes,
-                                        'path': notebook_path,
+                                        'path': display_path,
                                         'number': i,
                                         'content': content  # Keep original content
                                     }
@@ -1773,7 +1792,15 @@ Author: {notebook_info['author']} | Votes: {notebook_info['votes']:,}
                                             })
                                 
                                 # Step 3: Synthesize all analyses
-                                if AGENT_AVAILABLE and cached_analyses:
+                                print(f"[DEBUG] About to synthesize: AGENT_AVAILABLE={AGENT_AVAILABLE}, cached_analyses length={len(cached_analyses)}, notebook_metadata_list length={len(notebook_metadata_list)}", flush=True)
+                                
+                                # ✅ FIX: ALWAYS generate a response if we have notebooks
+                                if not notebook_metadata_list:
+                                    print("[ERROR] No notebooks in metadata list after processing!", flush=True)
+                                    response = "No notebooks found."
+                                    handler_used = None
+                                elif AGENT_AVAILABLE and cached_analyses:
+                                    print("[DEBUG] ENTERED synthesis block with agent!", flush=True)
                                     try:
                                         print(f"[SYNTHESIS] Combining {len(cached_analyses)} analyses...")
                                         
@@ -1834,6 +1861,8 @@ Author: {notebook_info['author']} | Votes: {notebook_info['votes']:,}
 ---
 
 *Analysis powered by AI agent using notebook data from Kaggle API.*{show_more_prompt}"""
+                                        # ✅ TRACK: Notebook explainer agent handled this query
+                                        handler_used = "notebook_explainer_agent"
                                     
                                     except Exception as e:
                                         print(f"[ERROR] Agent failed, using fallback template: {e}")
@@ -1861,6 +1890,8 @@ Author: {notebook_info['author']} | Votes: {notebook_info['votes']:,}
 - Look for common patterns across top solutions
 
 *Data retrieved from Kaggle API and cached for fast access.*"""
+                                        # ✅ TRACK: Notebook explainer agent handled this query (fallback path)
+                                        handler_used = "notebook_explainer_agent"
                                 else:
                                     # No agent - use simple list
                                     print("[DEBUG] Agent not available, using simple notebook list")
@@ -1879,6 +1910,8 @@ Author: {notebook_info['author']} | Votes: {notebook_info['votes']:,}
 {notebooks_section}
 
 *Data retrieved from Kaggle API and cached for fast access.*"""
+                                    # ✅ TRACK: Notebook explainer agent handled this query (simple list)
+                                    handler_used = "notebook_explainer_agent"
                             
                             except Exception as e:
                                 print(f"[ERROR] Failed to retrieve notebooks from ChromaDB: {e}")
@@ -3193,6 +3226,7 @@ Your query suggests you're looking for guidance on this Kaggle competition. This
 
 *This response is generated by the intelligent multi-agent reasoning system, designed to provide comprehensive guidance for Kaggle competitions.*"""
 
+                print(f"[DEBUG] ABOUT TO RETURN: response length={len(response) if response else 0}, handler_used={handler_used}", flush=True)
                 return jsonify({
                     "success": True,
                     "query": query,

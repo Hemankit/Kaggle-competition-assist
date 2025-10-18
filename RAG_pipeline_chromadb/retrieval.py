@@ -36,18 +36,19 @@ class ChromaDBRetriever:
         
         logger.info(f"ChromaDB Retriever initialized for collection: {collection_name}")
 
-    def retrieve(self, query: str, top_k: int = 20) -> List[Dict]:
+    def retrieve(self, query: str, top_k: int = 20, where: dict = None) -> List[Dict]:
         """
         Retrieve documents using ChromaDB similarity search.
         
         Args:
             query: Search query
             top_k: Number of documents to retrieve
+            where: Optional metadata filter (e.g., {"section": "code", "competition_slug": "titanic"})
             
         Returns:
             List of retrieved documents with metadata
         """
-        logger.info(f"Retrieving top {top_k} documents for query: {query}")
+        logger.info(f"Retrieving top {top_k} documents for query: {query} (filters: {where})")
         
         try:
             # Get or create collection
@@ -57,11 +58,15 @@ class ChromaDBRetriever:
             query_embedding = self.embedding_model.encode(query).tolist()
             
             # Query the collection
-            results = collection.query(
-                query_embeddings=[query_embedding],
-                n_results=top_k,
-                include=["documents", "metadatas", "distances"]
-            )
+            query_params = {
+                "query_embeddings": [query_embedding],
+                "n_results": top_k,
+                "include": ["documents", "metadatas", "distances"]
+            }
+            if where:
+                query_params["where"] = where
+            
+            results = collection.query(**query_params)
             
             # Format results
             retrieved_docs = []
