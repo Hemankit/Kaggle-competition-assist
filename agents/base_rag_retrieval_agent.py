@@ -69,7 +69,9 @@ class BaseRAGRetrievalAgent:
             "section_content": combined_content,
             "user_level": metadata.get("user_level", "beginner"),
             "tone": metadata.get("tone", "friendly"),
-            "competition": metadata.get("competition", "Unknown Competition")
+            "competition": metadata.get("competition", "Unknown Competition"),
+            "metric": metadata.get("metric", ""),  # ✅ FIX: Pass metric for evaluation prompt
+            "details": metadata.get("details", "")  # ✅ FIX: Pass details for evaluation prompt
         }
         
         return self.chain.run(prompt_input)

@@ -80,7 +80,7 @@ from sklearn.ensemble import RandomForestClassifier
 model = RandomForestClassifier()
 # CORRECT: Use 'accuracy' - matches Kaggle metric
 scores = cross_val_score(model, X, y, cv=5, scoring='accuracy')
-print(f"CV Accuracy: {scores.mean():.4f}")
+print(f"CV Accuracy: {{scores.mean():.4f}}")
 
 # WRONG: Don't use these for pure accuracy metric
 # scores = cross_val_score(model, X, y, cv=5, scoring='f1')  # ✗ Wrong metric
@@ -95,7 +95,7 @@ import numpy as np
 # CORRECT: Calculate RMSE the way Kaggle does
 predictions = model.predict(X_test)
 rmse = np.sqrt(mean_squared_error(y_test, predictions))
-print(f"RMSE: {rmse:.4f}")
+print(f"RMSE: {{rmse:.4f}}")
 
 # COMMON MISTAKE: Using MAE instead of RMSE
 # mae = mean_absolute_error(y_test, predictions)  # ✗ Wrong metric
@@ -109,7 +109,7 @@ from sklearn.model_selection import cross_val_score
 model = LogisticRegression()
 # CORRECT: Use 'f1' for imbalanced classification
 scores = cross_val_score(model, X, y, cv=5, scoring='f1')
-print(f"CV F1: {scores.mean():.4f}")
+print(f"CV F1: {{scores.mean():.4f}}")
 
 # Single evaluation:
 f1 = f1_score(y_test, model.predict(X_test))

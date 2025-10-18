@@ -1503,13 +1503,15 @@ def handle_component_query():
                                 "user_level": "intermediate",
                                 "tone": "helpful",
                                 "competition": competition_name,
-                                "metric": eval_metric
+                                "metric": eval_metric,
+                                "details": detailed_evaluation  # ✅ FIX: Provide details for evaluation prompt
                             }
                             
                             # Use summarize_sections to avoid repetition
+                            print(f"[DEBUG] About to call agent.summarize_sections with {len(sections)} sections", flush=True)
                             agent_response = agent.summarize_sections(sections, metadata)
-                            
-                            print(f"[DEBUG] Agent response length: {len(agent_response)} chars")
+                            print(f"[DEBUG] Agent response returned successfully", flush=True)
+                            print(f"[DEBUG] Agent response length: {len(agent_response)} chars", flush=True)
                             
                             # Format with competition context
                             response = f"""📊 **Evaluation Metric for {competition_name}**
