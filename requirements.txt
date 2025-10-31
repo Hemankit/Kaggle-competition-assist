@@ -16,7 +16,7 @@ langchain-openai==0.0.2  # Downgraded for crewai 0.11.0 compatibility
 
 # Multi-Agent Frameworks
 crewai==0.11.0
-pyautogen==0.2.0
+# pyautogen==0.2.10  # Temporarily commented out due to version issues
 langgraph==0.0.26
 
 # Vector Database & RAG

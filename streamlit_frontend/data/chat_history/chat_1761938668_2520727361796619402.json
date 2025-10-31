@@ -1,0 +1,33 @@
+{
+  "id": "chat_1761938668_2520727361796619402",
+  "title": "Can you explain me the evaluation metric for this ...",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Can you explain me the evaluation metric for this competition?",
+      "timestamp": "15:23"
+    },
+    {
+      "role": "assistant",
+      "content": "No response received.",
+      "timestamp": "15:24"
+    },
+    {
+      "role": "user",
+      "content": "What data is used in this competition?",
+      "timestamp": "15:31"
+    },
+    {
+      "role": "assistant",
+      "content": "No response received.",
+      "timestamp": "15:32"
+    }
+  ],
+  "timestamp": "2025-10-31T15:32:48.695484",
+  "user_info": {
+    "kaggle_username": "Hemankit",
+    "competition_slug": "titanic",
+    "competition_name": "titanic"
+  },
+  "session_id": "59745860-97df-42ee-8254-99c6b2186ee6"
+}

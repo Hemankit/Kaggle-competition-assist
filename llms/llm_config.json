@@ -1,9 +1,9 @@
 {
   "default": {
     "provider": "google",
-    "model": "gemini-2.5-flash",
+    "model": "gemini-2.5-pro",
     "temperature": 0.2,
-    "comment": "Fast retrieval, routing, simple queries"
+    "comment": "High-quality retrieval, routing, simple queries"
   },
   "code_handling": {
     "provider": "groq",
@@ -19,32 +19,38 @@
   },
   "scraper_decision": {
     "provider": "google",
-    "model": "gemini-2.5-flash",
+    "model": "gemini-2.5-pro",
     "temperature": 0.2,
-    "comment": "Fast routing decisions for scraping strategy"
+    "comment": "Smart routing decisions for scraping strategy"
   },
   "routing": {
     "provider": "google",
-    "model": "gemini-2.5-flash",
+    "model": "gemini-2.5-pro",
     "temperature": 0.1,
-    "comment": "Intent detection, quick decisions"
+    "comment": "Intent detection, intelligent decisions"
   },
   "reasoning_and_interaction": {
+    "provider": "groq",
+    "model": "llama-3.3-70b-versatile",
+    "temperature": 0.3,
+    "comment": "Groq Llama for reliable multi-agent orchestration (Perplexity has API compatibility issues with CrewAI)"
+  },
+  "external_search": {
     "provider": "perplexity",
     "model": "sonar",
     "temperature": 0.3,
-    "comment": "Perplexity Sonar for deep reasoning + search-augmented context (PERFECT for multi-agent orchestration)"
+    "comment": "Perplexity Sonar ONLY for external search (via ExternalSearchAgent)"
   },
   "retrieval_agents": {
     "provider": "google",
-    "model": "gemini-2.5-flash",
+    "model": "gemini-2.5-pro",
     "temperature": 0.2,
-    "comment": "Discussion/notebook/data summarization - fast and accurate"
+    "comment": "Discussion/notebook/data summarization - high quality and accurate"
   },
   "aggregation": {
     "provider": "google",
-    "model": "gemini-2.5-flash",
+    "model": "gemini-2.5-pro",
     "temperature": 0.1,
-    "comment": "Fast synthesis of multi-agent responses"
+    "comment": "High-quality synthesis of multi-agent responses"
   }
 }

@@ -1,0 +1,23 @@
+{
+  "id": "chat_1761848801_-8481643129900075269",
+  "title": "What is the evaluation metric used for this compet...",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What is the evaluation metric used for this competition?",
+      "timestamp": "14:26"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "timestamp": "14:26"
+    }
+  ],
+  "timestamp": "2025-10-30T14:26:41.373731",
+  "user_info": {
+    "kaggle_username": "Hemankit",
+    "competition_slug": "titanic",
+    "competition_name": "Titanic"
+  },
+  "session_id": "217253bb-5ea8-4963-b669-6a5719733a03"
+}

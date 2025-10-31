@@ -1,0 +1,23 @@
+{
+  "id": "chat_1761937569_-5511149771852699706",
+  "title": "Explain me the evaluation metric for this competit...",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Explain me the evaluation metric for this competition?",
+      "timestamp": "15:05"
+    },
+    {
+      "role": "system",
+      "content": "⚠️ Backend error: 500",
+      "timestamp": "15:06"
+    }
+  ],
+  "timestamp": "2025-10-31T15:06:09.050622",
+  "user_info": {
+    "kaggle_username": "Hemankit",
+    "competition_slug": "titanic",
+    "competition_name": "titanic"
+  },
+  "session_id": "8e090088-8bdd-45dd-a386-fe91a6a94cdb"
+}

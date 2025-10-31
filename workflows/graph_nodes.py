@@ -221,7 +221,7 @@ def meta_intervention_node(state: Dict[str, Any]) -> Dict[str, Any]:
         name="Meta-Intervention Analysis",
         description="Diagnose why recent runs have failed or stalled. Recommend a different approach, reasoning style, or agent mix.",
         agent=agent,
-        context={"memory": state.get("memory", {})},
+        context=[],  # CrewAI Task.context expects a list, not a dict
         expected_output="Actionable diagnosis and re-strategizing"
     )
     crew = Crew(agents=[agent], tasks=[task], process="sequential")
