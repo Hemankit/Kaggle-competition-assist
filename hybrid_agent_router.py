@@ -170,6 +170,13 @@ class HybridAgentRouter:
                 'complexity': ['low', 'medium'],
                 'specialties': ['community_management', 'social_interaction'],
                 'priority': 3
+            },
+            'data_section': {
+                'keywords': ['data', 'files', 'dataset', 'features', 'columns', 'train.csv', 'test.csv', 'load', 'structure', 'eda'],
+                'query_types': ['informational', 'instructional'],
+                'complexity': ['low', 'medium'],
+                'specialties': ['data_analysis', 'file_structure', 'eda'],
+                'priority': 2
             }
         }
 
