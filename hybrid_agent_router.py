@@ -38,32 +38,51 @@ class HybridAgentRouter:
     def __init__(self, perplexity_api_key: Optional[str] = None, google_api_key: Optional[str] = None):
         self.external_search_agent = ExternalSearchAgent(perplexity_api_key, google_api_key)
         self.rag_adapter = RAGAdapter(google_api_key)
+        self.google_api_key = google_api_key  # Store for agent initialization
         self.agents = self._initialize_agents()
         self.agent_capabilities = self._build_agent_capabilities()
         self.routing_history = []
 
     def _initialize_agents(self) -> Dict[str, Any]:
-        """Initialize all available agents."""
+        """Initialize all available agents with proper LLM configuration."""
         agents = {}
         
         if AGENTS_AVAILABLE:
             try:
-                # Initialize existing agents
+                # Initialize LLM for agents
+                from llms.llm_loader import get_llm_from_config
+                retrieval_llm = get_llm_from_config("retrieval_agents")
+                reasoning_llm = get_llm_from_config("reasoning_and_interaction")
+                
+                # Initialize ChromaDB retriever
+                try:
+                    from RAG_pipeline_chromadb.rag_pipeline import ChromaDBRAGPipeline
+                    retriever = ChromaDBRAGPipeline(
+                        collection_name="kaggle_competition_data",
+                        embedding_model="all-mpnet-base-v2"
+                    )
+                except Exception as e:
+                    logger.warning(f"ChromaDB not available for agents: {e}")
+                    retriever = None
+                
+                # Initialize existing agents WITH LLMs and retriever
                 agents.update({
-                    'competition_summary': CompetitionSummaryAgent(),
-                    'notebook_explainer': NotebookExplainerAgent(),
-                    'discussion_helper': DiscussionHelperAgent(),
-                    'error_diagnosis': ErrorDiagnosisAgent(),
-                    'code_feedback': CodeFeedbackAgent(),
-                    'progress_monitor': ProgressMonitorAgent(),
-                    'timeline_coach': TimelineCoachAgent(),
-                    'multihop_reasoning': MultiHopReasoningAgent(),
-                    'idea_initiator': IdeaInitiatorAgent(),
-                    'community_engagement': CommunityEngagementAgent()
+                    'competition_summary': CompetitionSummaryAgent(retriever=retriever, llm=retrieval_llm),
+                    'notebook_explainer': NotebookExplainerAgent(retriever=retriever, llm=retrieval_llm),
+                    'discussion_helper': DiscussionHelperAgent(retriever=retriever, llm=retrieval_llm),
+                    'error_diagnosis': ErrorDiagnosisAgent(retriever=retriever, llm=reasoning_llm),
+                    'code_feedback': CodeFeedbackAgent(retriever=retriever, llm=reasoning_llm),
+                    'progress_monitor': ProgressMonitorAgent(retriever=retriever, llm=retrieval_llm),
+                    'timeline_coach': TimelineCoachAgent(retriever=retriever, llm=retrieval_llm),
+                    'multihop_reasoning': MultiHopReasoningAgent(retriever=retriever, llm=reasoning_llm),
+                    'idea_initiator': IdeaInitiatorAgent(retriever=retriever, llm=reasoning_llm),
+                    'community_engagement': CommunityEngagementAgent(retriever=retriever, llm=retrieval_llm)
                 })
-                logger.info("✅ All agents initialized for hybrid routing")
+                logger.info("✅ All agents initialized with LLMs and retriever for hybrid routing")
             except Exception as e:
                 logger.error(f"Error initializing agents: {e}")
+                import traceback
+                traceback.print_exc()
         
         return agents
 
