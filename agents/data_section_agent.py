@@ -64,19 +64,42 @@ Keep it concise and informative."""
         
         self.summary_prompt = summary_prompt
     
-    def run(self, competition: str, files: List[Dict[str, Any]], 
-            description: str = "", user_query: str = "") -> Dict[str, Any]:
+    def run(self, structured_query: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Analyze competition data files and provide summary.
+        V2-compatible run method that matches BaseRAGRetrievalAgent interface.
         
         Args:
-            competition: Competition slug
-            files: List of file metadata dicts from Kaggle API
-            description: Data description text (from scraping or cache)
-            user_query: User's original query
+            structured_query: Dict with 'cleaned_query' and 'metadata'
         
         Returns:
-            Dict with structured response about data files
+            Dict with agent_name and response
+        """
+        try:
+            # Extract query and metadata
+            query = structured_query.get("cleaned_query", "")
+            metadata = structured_query.get("metadata", {})
+            competition = metadata.get("competition_slug", metadata.get("competition", "Unknown Competition"))
+            
+            # Fetch data description from ChromaDB
+            chunks = self.fetch_sections(structured_query)
+            
+            # Extract file information and description from chunks
+            files_info = self._extract_files_from_content(chunks)
+            description = "\n\n".join([chunk.get("content", "") for chunk in chunks])
+            
+            # Generate summary using the retrieved data
+            final_response = self.summarize_sections(chunks, metadata)
+            
+            return {"agent_name": self.name, "response": final_response}
+        
+        except Exception as e:
+            return {"agent_name": self.name, "response": f"DataSectionAgent failed: {str(e)}"}
+    
+    def run_legacy(self, competition: str, files: List[Dict[str, Any]], 
+            description: str = "", user_query: str = "") -> Dict[str, Any]:
+        """
+        LEGACY method for backward compatibility (direct Kaggle API usage).
+        Use run() for V2 orchestrator compatibility.
         """
         if not files:
             return {
@@ -109,6 +132,19 @@ Keep it concise and informative."""
             "summary": summary,
             "status": "success"
         }
+    
+    def _extract_files_from_content(self, chunks: List[Dict[str, Any]]) -> str:
+        """Extract file information from retrieved content."""
+        # Look for file mentions in content
+        file_keywords = ['train.csv', 'test.csv', 'sample_submission', '.csv', 'data file']
+        relevant_content = []
+        
+        for chunk in chunks:
+            content = chunk.get("content", "").lower()
+            if any(keyword in content for keyword in file_keywords):
+                relevant_content.append(chunk.get("content", ""))
+        
+        return "\n".join(relevant_content[:3])  # Top 3 relevant chunks
     
     def _format_files(self, files: List[Dict[str, Any]]) -> str:
         """Format file list for display."""
