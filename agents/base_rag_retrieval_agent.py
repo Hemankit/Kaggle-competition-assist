@@ -19,11 +19,15 @@ class BaseRAGRetrievalAgent:
 
     def fetch_sections(self, query: Dict[str, Any], top_k: int = 5) -> List:
         cleaned_query = query.get("cleaned_query", "")
-        # Use ChromaDB's retrieve_and_rerank method
+        metadata = query.get("metadata", {})
+        competition_slug = metadata.get("competition_slug") or metadata.get("competition")
+        
+        # Use ChromaDB's retrieve_and_rerank method with competition filter
         docs = self.retriever.rerank_document_store(
             query=cleaned_query,
             top_k_retrieval=20,
-            top_k_final=top_k
+            top_k_final=top_k,
+            competition_slug=competition_slug  # CRITICAL: Filter by current competition!
         )
         return docs
 

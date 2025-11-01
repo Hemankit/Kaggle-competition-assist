@@ -71,9 +71,23 @@ class ChromaDBRAGPipeline:
         result = self.chunker.chunk_and_index(pydantic_results, structured_results, self.indexer)
         return result.get("message", f"Chunked and indexed documents")
 
-    def rerank_document_store(self, query: str, top_k_retrieval: int = 20, top_k_final: int = 5):
-        """Retrieve and rerank documents using the ChromaDB retriever."""
-        retrieved_docs = self.retriever.retrieve(query, top_k=top_k_retrieval)
+    def rerank_document_store(self, query: str, top_k_retrieval: int = 20, top_k_final: int = 5, competition_slug: str = None):
+        """
+        Retrieve and rerank documents using the ChromaDB retriever.
+        
+        Args:
+            query: Search query
+            top_k_retrieval: Number of documents to retrieve before reranking
+            top_k_final: Number of documents to return after reranking
+            competition_slug: Optional competition filter (e.g., "titanic")
+        """
+        # Build metadata filter if competition_slug is provided
+        where_filter = None
+        if competition_slug:
+            where_filter = {"competition_slug": competition_slug}
+            logger.info(f"Filtering retrieval by competition: {competition_slug}")
+        
+        retrieved_docs = self.retriever.retrieve(query, top_k=top_k_retrieval, where=where_filter)
         reranked_docs = self.retriever.rerank(query, retrieved_docs, top_k_final)
         return reranked_docs
 
