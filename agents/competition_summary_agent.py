@@ -157,21 +157,39 @@ class CompetitionSummaryAgent(BaseRAGRetrievalAgent):
     otherwise uses the standard overview_prompt.
     """
     def __init__(self, retriever=None, llm=None, query_type="overview"):
-        # Select appropriate prompt based on query type
-        if query_type == "evaluation":
-            template = evaluation_prompt
-            section = "evaluation"
-        else:
-            template = overview_prompt
-            section = "overview"
-        
+        # Always use overview as default - we'll detect evaluation queries dynamically
         super().__init__(
             agent_name="CompetitionSummaryAgent",
-            prompt_template=template,
-            section=section,
+            prompt_template=overview_prompt,
+            section="overview",
             retriever=retriever,
             llm=llm
         )
+        self.evaluation_prompt = evaluation_prompt
+        self.overview_prompt = overview_prompt
+    
+    def run(self, structured_query: dict) -> dict:
+        """Override run to detect evaluation queries and use appropriate prompt"""
+        query = structured_query.get("cleaned_query", "").lower()
+        
+        # Detect if query is about evaluation metrics
+        eval_keywords = ['evaluation', 'metric', 'score', 'scoring', 'measure', 'performance', 'leaderboard']
+        is_eval_query = any(keyword in query for keyword in eval_keywords)
+        
+        if is_eval_query:
+            # Temporarily switch to evaluation prompt
+            original_template = self.chain.prompt.template if self.chain else None
+            if self.chain:
+                from langchain_core.prompts import PromptTemplate
+                from langchain.chains import LLMChain
+                self.chain = LLMChain(llm=self.llm, prompt=PromptTemplate.from_template(self.evaluation_prompt))
+            result = super().run(structured_query)
+            # Restore original template
+            if original_template and self.chain:
+                self.chain = LLMChain(llm=self.llm, prompt=PromptTemplate.from_template(original_template))
+            return result
+        else:
+            return super().run(structured_query)
 
 
 # Backwards compatibility alias
