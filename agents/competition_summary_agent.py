@@ -177,19 +177,59 @@ class CompetitionSummaryAgent(BaseRAGRetrievalAgent):
         is_eval_query = any(keyword in query for keyword in eval_keywords)
         
         if is_eval_query:
+            # Fetch documents first to extract metric information
+            metadata = structured_query.get("metadata", {})
+            chunks = self.fetch_sections(structured_query)
+            
+            # Extract metric name from content
+            combined_content = "\n".join([chunk.get("content", "") for chunk in chunks])
+            metric_name = self._extract_metric_name(combined_content)
+            
+            # Update metadata with extracted metric info
+            metadata["metric"] = metric_name
+            metadata["details"] = combined_content[:500]  # First 500 chars as details
+            metadata["competition"] = metadata.get("competition_slug", metadata.get("competition", "this competition"))
+            
             # Temporarily switch to evaluation prompt
             original_template = self.chain.prompt.template if self.chain else None
             if self.chain:
                 from langchain_core.prompts import PromptTemplate
                 from langchain.chains import LLMChain
                 self.chain = LLMChain(llm=self.llm, prompt=PromptTemplate.from_template(self.evaluation_prompt))
-            result = super().run(structured_query)
+            
+            # Generate response with evaluation prompt
+            final_response = self.summarize_sections(chunks, metadata)
+            
             # Restore original template
             if original_template and self.chain:
                 self.chain = LLMChain(llm=self.llm, prompt=PromptTemplate.from_template(original_template))
-            return result
+            
+            return {"agent_name": self.name, "response": final_response}
         else:
             return super().run(structured_query)
+    
+    def _extract_metric_name(self, content: str) -> str:
+        """Extract metric name from content using simple keyword matching"""
+        content_lower = content.lower()
+        
+        # Common metrics to look for
+        metrics = {
+            'accuracy': 'Accuracy',
+            'rmse': 'RMSE (Root Mean Squared Error)',
+            'mae': 'MAE (Mean Absolute Error)',
+            'f1': 'F1-Score',
+            'auc': 'AUC (Area Under the Curve)',
+            'logloss': 'LogLoss',
+            'r2': 'R² Score',
+            'precision': 'Precision',
+            'recall': 'Recall'
+        }
+        
+        for key, name in metrics.items():
+            if key in content_lower:
+                return name
+        
+        return "the evaluation metric"
 
 
 # Backwards compatibility alias
