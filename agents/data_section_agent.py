@@ -20,49 +20,117 @@ class DataSectionAgent(BaseRAGRetrievalAgent):
     def __init__(self, llm=None, retriever=None):
         """Initialize the Data Section Agent."""
         
-        # Simple prompt for data summarization - RETRIEVAL ONLY
-        summary_prompt = """You are a Kaggle competition data information retrieval agent. 
-Your role is to present FACTUAL information about data files - NOT to give recommendations or advice.
+        # ENHANCED prompt with 3-section breakdown (like CompetitionSummaryAgent evaluation)
+        enhanced_data_prompt = """You are a Kaggle competition data expert. Your role is to help competitors understand the data structure and how to work with it effectively.
 
 Competition: {competition}
-User Query: {user_query}
+User Level: {user_level}
+Tone: {tone}
 
-Data Files:
-{files_info}
+Data Information:
+{section_content}
 
-Data Description (from competition page):
-{description}
+Provide a PRACTICAL breakdown covering these 3 key areas:
 
-Present the KEY FACTS clearly:
-1. What files are available (names, sizes, formats)
-2. What each file contains (based on description)
-3. Notable characteristics (file sizes, number of files, formats)
-4. Any missing information or gaps in the data description
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1️⃣ DATA STRUCTURE - What's in each file?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-BE FACTUAL, not advisory. Present information that reasoning agents can use to formulate recommendations.
+For each file (train, test, submission template):
+- 📁 Filename and purpose
+- 📊 Dimensions (rows x columns) if available
+- 🎯 Target variable presence (train has it, test doesn't)
+- 💡 What to use it for
 
-DO NOT:
-- Give recommendations ("you should load...", "I recommend...")
-- Suggest approaches or strategies
-- Tell the user what to do
+Example format:
+```
+📁 train.csv (891 rows, 12 columns)
+   - Ground truth included (target column)
+   - Use for: Training + Cross-validation
+   - Contains: All features + target variable
 
-DO:
-- List available files clearly
-- Present file metadata (sizes, formats)
-- Explain what each file contains
-- Note any important characteristics
+📁 test.csv (418 rows, 11 columns)  
+   - NO ground truth (predict this!)
+   - Use for: Final Kaggle submission predictions
+```
 
-Keep it concise and informative."""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2️⃣ LOADING STRATEGY - How to read and validate the data
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Provide Python code showing:
+1. How to load the files correctly
+2. How to validate the data (shape checks, column consistency)
+3. Quick initial inspection
+
+Example:
+```python
+import pandas as pd
+import numpy as np
+
+# Load data
+train = pd.read_csv('train.csv')
+test = pd.read_csv('test.csv')
+
+# Quick validation
+print(f"Train shape: {{train.shape}}")
+print(f"Test shape: {{test.shape}}")
+
+# Check column consistency
+train_cols = set(train.columns) - {{'target_column'}}
+test_cols = set(test.columns)
+assert train_cols == test_cols, "Column mismatch!"
+
+# Target distribution (for classification)
+print(train['target'].value_counts(normalize=True))
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3️⃣ ESSENTIAL EDA - What to check first
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Guide competitors through critical initial checks:
+
+✓ Missing Values Analysis
+```python
+# Check for missing data
+missing = train.isnull().sum()
+print(missing[missing > 0])
+# ⚠️ Highlight columns with >10% missing
+```
+
+✓ Feature Types Classification
+- **Numerical**: List continuous features (Age, Price, etc.)
+- **Categorical**: List discrete features (Sex, Category, etc.)  
+- **Identifiers**: Note which columns are IDs (don't use for modeling!)
+- **Dates/Text**: Special handling needed
+
+✓ Target Variable Analysis (for supervised learning)
+- Distribution (balanced/imbalanced?)
+- Data type (binary, multiclass, continuous?)
+- Any special characteristics
+
+✓ Quick Correlation Check (for numerical features)
+```python
+# Which features correlate with target?
+correlations = train.corr()['target'].sort_values(ascending=False)
+print(correlations.head(10))
+```
+
+📌 KEY TAKEAWAY:
+Provide 2-3 actionable insights about which features look most promising or what challenges to expect (heavy missing data, class imbalance, etc.)
+
+Response:"""
         
         super().__init__(
             agent_name="DataSectionAgent",
-            prompt_template=summary_prompt,
+            prompt_template=enhanced_data_prompt,
             section="data",
             llm=llm,
             retriever=retriever
         )
         
-        self.summary_prompt = summary_prompt
+        self.enhanced_data_prompt = enhanced_data_prompt
     
     def run(self, structured_query: Dict[str, Any]) -> Dict[str, Any]:
         """
