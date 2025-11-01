@@ -481,10 +481,8 @@ class DynamicCrossFrameworkOrchestrator:
     def _execute_single_agent(self, agent_selection: AgentSelection, query: str, context: Dict) -> Dict:
         """Execute a single agent using its selected framework"""
         try:
-            # Get agent instance
-            agent_instance = get_agent(agent_selection.name, mode="default")
-            
-            # Execute using agents from hybrid_router if available
+            # CRITICAL: Check hybrid_router FIRST before calling get_agent()
+            # Many agents (like data_section) are ONLY in hybrid_router, not in get_agent registry
             if self.hybrid_router and agent_selection.name in self.hybrid_router.agents:
                 agent = self.hybrid_router.agents[agent_selection.name]
                 # Run the agent directly
@@ -499,22 +497,36 @@ class DynamicCrossFrameworkOrchestrator:
                         "response": f"Agent execution failed: {str(e)}",
                         "error": str(e)
                     }
-            # Fallback to framework orchestrators (if agents not in hybrid_router)
-            elif agent_selection.framework == FrameworkCapability.CREWAI.value:
-                result = self.crewai_orchestrator.run_single_agent(
-                    agent_selection.name, query, context
-                )
-            elif agent_selection.framework == FrameworkCapability.AUTOGEN.value:
-                result = self.autogen_orchestrator.run_single_agent(
-                    agent_selection.name, query, context
-                )
-            elif agent_selection.framework == FrameworkCapability.LANGGRAPH.value:
-                result = self.langgraph_orchestrator.run_single_agent(
-                    agent_selection.name, query, context
-                )
+            # Fallback to framework orchestrators or get_agent (if agents not in hybrid_router)
             else:
-                # Fallback to direct agent execution
-                result = agent_instance.run(query, context)
+                try:
+                    # Try to get agent from registry
+                    agent_instance = get_agent(agent_selection.name, mode="default")
+                except Exception as get_agent_error:
+                    logger.error(f"Agent {agent_selection.name} not found in hybrid_router or get_agent registry: {get_agent_error}")
+                    return {
+                        "agent_name": agent_selection.name,
+                        "framework": agent_selection.framework,
+                        "error": f"Agent '{agent_selection.name}' not found in registry.",
+                        "updated_context": context
+                    }
+                
+                # Try framework-specific orchestrators
+                if agent_selection.framework == FrameworkCapability.CREWAI.value:
+                    result = self.crewai_orchestrator.run_single_agent(
+                        agent_selection.name, query, context
+                    )
+                elif agent_selection.framework == FrameworkCapability.AUTOGEN.value:
+                    result = self.autogen_orchestrator.run_single_agent(
+                        agent_selection.name, query, context
+                    )
+                elif agent_selection.framework == FrameworkCapability.LANGGRAPH.value:
+                    result = self.langgraph_orchestrator.run_single_agent(
+                        agent_selection.name, query, context
+                    )
+                else:
+                    # Fallback to direct agent execution
+                    result = agent_instance.run(query, context)
             
             return {
                 "agent_name": agent_selection.name,

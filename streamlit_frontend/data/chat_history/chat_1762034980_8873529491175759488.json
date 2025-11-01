@@ -1,0 +1,23 @@
+{
+  "id": "chat_1762034980_8873529491175759488",
+  "title": "What data files are available for this competition...",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What data files are available for this competition?",
+      "timestamp": "18:09"
+    },
+    {
+      "role": "assistant",
+      "content": "I processed your query but couldn't generate a response. ChromaDB may be empty.",
+      "timestamp": "18:09"
+    }
+  ],
+  "timestamp": "2025-11-01T18:09:40.292253",
+  "user_info": {
+    "kaggle_username": "Hemankit",
+    "competition_slug": "titanic",
+    "competition_name": "titanic"
+  },
+  "session_id": "05dbbc74-1c40-4b87-8fa8-b870ebbcfbc4"
+}
