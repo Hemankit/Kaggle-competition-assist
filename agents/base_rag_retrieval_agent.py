@@ -84,8 +84,11 @@ class BaseRAGRetrievalAgent:
         try:
             metadata = structured_query.get("metadata", {})
             chunks = self.fetch_sections(structured_query)
-            relevant_chunks = self.extract_relevant_sections(chunks, structured_query)
-            final_response = self.explain_sections(relevant_chunks, metadata)
+            
+            # CRITICAL FIX: Use summarize_sections to avoid repetition!
+            # This combines all chunks into ONE unified response instead of separate responses per chunk
+            final_response = self.summarize_sections(chunks, metadata)
+            
             return {"agent_name": self.name, "response": final_response}
         except Exception as e:
             return {"agent_name": self.name, "response": f"{self.name} failed: {str(e)}"}
