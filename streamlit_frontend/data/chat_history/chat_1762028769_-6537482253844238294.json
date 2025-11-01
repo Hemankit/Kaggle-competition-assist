@@ -1,0 +1,23 @@
+{
+  "id": "chat_1762028769_-6537482253844238294",
+  "title": "Can you explain me the evaluation metric for this ...",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Can you explain me the evaluation metric for this competition?",
+      "timestamp": "16:25"
+    },
+    {
+      "role": "assistant",
+      "content": "No relevant information found",
+      "timestamp": "16:26"
+    }
+  ],
+  "timestamp": "2025-11-01T16:26:09.415437",
+  "user_info": {
+    "kaggle_username": "Hemankit",
+    "competition_slug": "tita",
+    "competition_name": "tita"
+  },
+  "session_id": "4cce1447-0ef3-474a-bc4e-8e32c224e0f4"
+}

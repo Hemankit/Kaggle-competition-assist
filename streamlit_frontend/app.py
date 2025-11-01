@@ -466,7 +466,8 @@ def main():
                                 st.session_state.user_info['competition_name'] = comp['name']
                                 st.rerun()
             
-            competition_slug = competition_input
+            # CRITICAL FIX: Use the slug from session_state if set by autocomplete, otherwise use user input
+            competition_slug = st.session_state.user_info.get('competition_slug', competition_input)
             
             # Initialize session button
             if st.button("🚀 Initialize Session", use_container_width=True, type="primary"):
