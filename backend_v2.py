@@ -528,58 +528,77 @@ def handle_v2_query():
             agents_to_use = []
             num_agents = 0
         
-        # Step 3: Decide orchestration mode based on complexity and agent count
-        print("[V2.0 STEP 3] Deciding orchestration mode...")
+        # Step 3: Create Dynamic Orchestration Plan
+        print("[V2.0 STEP 3] Creating dynamic orchestration plan...")
         
-        # Use LangGraph for all queries (most stable, handles 1-3 agents well)
-        mode = "langgraph"
+        # GAME CHANGER: Let UnifiedIntelligenceLayer create a cross-framework plan
+        # This allows RAG agents (LangGraph) to fetch Kaggle data,
+        # then Reasoning agents (CrewAI/AutoGen) to analyze it!
+        orchestration_plan = unified_intelligence.create_orchestration_plan(
+            query, orchestrator_context
+        )
         
-        if complexity == 'low' or num_agents <= 1:
-            print(f"[V2.0] Mode: LANGGRAPH (simple query, {num_agents} agent, fast)")
-        elif num_agents <= 3:
-            print(f"[V2.0] Mode: LANGGRAPH (medium-complex query, {num_agents} agents)")
-        else:
-            print(f"[V2.0] Mode: LANGGRAPH ({num_agents} agents)")
+        interaction_pattern = orchestration_plan.get('interaction_pattern', 'sequential')
+        planned_agents = orchestration_plan.get('agents', [])
+        expected_duration = orchestration_plan.get('expected_duration', 'unknown')
         
-        # Step 4: Execute with selected orchestration mode
-        print(f"[V2.0 STEP 4] Executing with {mode.upper()} orchestrator...")
+        print(f"[V2.0] Orchestration Plan:")
+        print(f"  - Pattern: {interaction_pattern}")
+        print(f"  - Agents: {len(planned_agents)}")
+        print(f"  - Expected Duration: {expected_duration}")
+        
+        for i, agent in enumerate(planned_agents):
+            print(f"  - Agent {i+1}: {agent['name']} ({agent['framework']}) - {agent['confidence']:.2f}")
+        
+        # Step 4: Execute dynamic orchestration plan
+        print(f"[V2.0 STEP 4] Executing dynamic orchestration plan...")
         start_time = datetime.now()
         
-        result = component_orchestrator.run({
-            "query": query,
-            "mode": mode,
-            "context": orchestrator_context
-        })
+        # Execute the plan using UnifiedIntelligenceLayer's dynamic orchestrator
+        result = unified_intelligence.execute_orchestration_plan(query, orchestrator_context)
         
         execution_time = (datetime.now() - start_time).total_seconds()
         print(f"[V2.0] Query processed in {execution_time:.2f}s")
         
-        # Extract response from result
-        final_response = (
-            result.get('response') or 
-            result.get('final_response') or
-            result.get('output') or
-            "I processed your query but couldn't generate a response."
-        )
+        # Extract response from dynamic orchestrator result
+        execution_summary = result.get('execution_summary', {})
+        agent_results = result.get('results', [])
         
-        # Extract metadata
-        agents_used = result.get('agents_used', agents_to_use)
+        # Combine all agent responses into final response
+        final_response = ""
+        if agent_results:
+            # Synthesize responses from all agents
+            for agent_result in agent_results:
+                agent_name = agent_result.get('agent_name', 'unknown')
+                agent_response = agent_result.get('result', {}).get('response', '')
+                if agent_response:
+                    final_response += f"\n\n[{agent_name}]: {agent_response}"
         
-        print(f"[V2.0 SUMMARY] Complexity: {complexity} | Category: {category} | Mode: {mode} | Agents: {agents_used}")
+        if not final_response:
+            final_response = "I processed your query but couldn't generate a response. ChromaDB may be empty."
+        
+        # Extract metadata from execution summary
+        frameworks_used = execution_summary.get('frameworks_used', [])
+        agents_used_names = execution_summary.get('agents_used', [])
+        
+        print(f"[V2.0 SUMMARY] Complexity: {complexity} | Category: {category} | Pattern: {interaction_pattern} | Agents: {agents_used_names} | Frameworks: {frameworks_used}")
         
         # Build response
         response_data = {
-            "response": final_response,
+            "response": final_response.strip(),
             "metadata": {
                 "execution_time": execution_time,
                 "complexity": complexity,
                 "category": category,
-                "agents_used": agents_used,
-                "num_agents": len(agents_used) if agents_used else 0,
-                "orchestrator_mode": mode,
+                "interaction_pattern": interaction_pattern,
+                "agents_used": agents_used_names,
+                "frameworks_used": frameworks_used,
+                "num_agents": len(agents_used_names),
+                "expected_duration": expected_duration,
+                "orchestrator_mode": "dynamic",
                 "orchestrator_version": "2.0",
                 "unified_intelligence": "active",
-                "hybrid_router": "active",
+                "dynamic_orchestration": "active",
                 "modes_available": ["crewai", "autogen", "langgraph", "dynamic"],
                 "timestamp": datetime.now().isoformat()
             },

@@ -1,7 +1,7 @@
 {
-  "default": {
-    "provider": "google",
-    "model": "gemini-2.5-pro",
+    "default": {
+        "provider": "google",
+        "model": "gemini-2.0-flash-exp",
     "temperature": 0.2,
     "comment": "High-quality retrieval, routing, simple queries"
   },
@@ -19,13 +19,13 @@
   },
   "scraper_decision": {
     "provider": "google",
-    "model": "gemini-2.5-pro",
+    "model": "gemini-2.0-flash-exp",
     "temperature": 0.2,
     "comment": "Smart routing decisions for scraping strategy"
   },
   "routing": {
     "provider": "google",
-    "model": "gemini-2.5-pro",
+    "model": "gemini-2.0-flash-exp",
     "temperature": 0.1,
     "comment": "Intent detection, intelligent decisions"
   },
@@ -43,13 +43,13 @@
   },
   "retrieval_agents": {
     "provider": "google",
-    "model": "gemini-2.5-pro",
+    "model": "gemini-2.0-flash-exp",
     "temperature": 0.2,
     "comment": "Discussion/notebook/data summarization - high quality and accurate"
   },
   "aggregation": {
     "provider": "google",
-    "model": "gemini-2.5-pro",
+    "model": "gemini-2.0-flash-exp",
     "temperature": 0.1,
     "comment": "High-quality synthesis of multi-agent responses"
   }

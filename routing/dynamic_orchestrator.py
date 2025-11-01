@@ -97,12 +97,33 @@ class DynamicCrossFrameworkOrchestrator:
 
     def analyze_query_complexity(self, parsed_intent: Dict[str, Any]) -> Dict[str, Any]:
         """Analyze query to determine complexity and interaction needs"""
+        # CRITICAL DEBUG: Log what we received
+        print(f"[DEBUG] analyze_query_complexity received type: {type(parsed_intent)}")
+        print(f"[DEBUG] analyze_query_complexity received value: {parsed_intent}")
+        
+        # Safety check: ensure parsed_intent is a dict
+        if not isinstance(parsed_intent, dict):
+            print(f"[DEBUG] NOT A DICT! Converting to dict...")
+            logger.warning(f"analyze_query_complexity received {type(parsed_intent)}, expected dict. Using defaults.")
+            parsed_intent = {
+                "intent": "general",
+                "sub_intents": parsed_intent if isinstance(parsed_intent, list) else [],
+                "reasoning_style": "default",
+                "metadata_flags": {}
+            }
+            print(f"[DEBUG] After conversion: {parsed_intent}")
+        
+        # Handle metadata_flags - it can be a dict or a list
+        metadata_flags = parsed_intent.get("metadata_flags", {})
+        if isinstance(metadata_flags, list):
+            metadata_flags = {}  # Convert list to empty dict
+        
         complexity_indicators = {
             "multi_intent": len(parsed_intent.get("sub_intents", [])) > 2,
             "multi_step": "step" in str(parsed_intent.get("reasoning_style", "")).lower(),
             "cross_domain": len(set(parsed_intent.get("sub_intents", []))) > 1,
-            "ambiguous": parsed_intent.get("metadata_flags", {}).get("ambiguity", False),
-            "urgent": parsed_intent.get("metadata_flags", {}).get("urgency", False),
+            "ambiguous": metadata_flags.get("ambiguity", False),
+            "urgent": metadata_flags.get("urgency", False),
             "validation_needed": any(tag in ["code", "model", "analysis"] for tag in parsed_intent.get("sub_intents", []))
         }
         
@@ -148,6 +169,16 @@ class DynamicCrossFrameworkOrchestrator:
 
     def select_agents_dynamically(self, parsed_intent: Dict[str, Any]) -> List[AgentSelection]:
         """Dynamically select agents based on query analysis"""
+        # Safety check: ensure parsed_intent is a dict
+        if not isinstance(parsed_intent, dict):
+            logger.warning(f"select_agents_dynamically received {type(parsed_intent)}, expected dict. Using defaults.")
+            parsed_intent = {
+                "intent": "general",
+                "sub_intents": parsed_intent if isinstance(parsed_intent, list) else [],
+                "reasoning_style": "default",
+                "metadata_flags": {}
+            }
+        
         subintents = parsed_intent.get("sub_intents", [])
         reasoning_style = parsed_intent.get("reasoning_style", "")
         
@@ -245,6 +276,16 @@ class DynamicCrossFrameworkOrchestrator:
         
         # 1. Parse user intent
         parsed_intent = parse_user_intent(query)
+        
+        # Safety check: ensure parsed_intent is a dict
+        if not isinstance(parsed_intent, dict):
+            logger.error(f"parse_user_intent returned {type(parsed_intent)}, expected dict. Wrapping in dict.")
+            parsed_intent = {
+                "intent": "general",
+                "sub_intents": parsed_intent if isinstance(parsed_intent, list) else [],
+                "reasoning_style": "default",
+                "metadata_flags": {}
+            }
         
         # 2. Analyze complexity
         complexity_analysis = self.analyze_query_complexity(parsed_intent)

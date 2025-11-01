@@ -1,5 +1,6 @@
 # routing/intent_router.py
 
+import logging
 from typing import Dict, Any
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import Runnable
@@ -8,6 +9,8 @@ from langchain_core.language_models.chat_models import BaseChatModel
 
 from .capability_scoring import find_agents_by_subintent
 from llms.llm_loader import get_llm_from_config  # Optional: central LLM fetch
+
+logger = logging.getLogger(__name__)
 
 # === Prompt ===
 ROUTER_PROMPT = PromptTemplate.from_template("""
@@ -39,7 +42,32 @@ def parse_user_intent(query: str, llm: BaseChatModel = None) -> Dict[str, Any]:
     """
     llm = llm or get_llm_from_config("default")
     chain = build_router_chain(llm)
-    parsed = chain.invoke({"query": query})
+    
+    try:
+        parsed = chain.invoke({"query": query})
+    except Exception as e:
+        logger.error(f"LLM chain invoke failed: {e}")
+        parsed = {}
+    
+    # Safety check: ensure parsed is a dict
+    if not isinstance(parsed, dict):
+        logger.warning(f"parse_user_intent: LLM returned {type(parsed)}, expected dict. Wrapping.")
+        parsed = {
+            "intent": "general",
+            "sub_intents": parsed if isinstance(parsed, list) else [],
+            "reasoning_style": "default",
+            "input_references": [],
+            "preferred_agents": [],
+            "metadata_flags": {}
+        }
+    
+    # Ensure all required keys exist
+    parsed.setdefault("intent", "general")
+    parsed.setdefault("sub_intents", [])
+    parsed.setdefault("reasoning_style", "default")
+    parsed.setdefault("input_references", [])
+    parsed.setdefault("preferred_agents", [])
+    parsed.setdefault("metadata_flags", {})
 
     # --- Auto-mode selection logic ---
     reasoning_style = parsed.get("reasoning_style", "").lower()

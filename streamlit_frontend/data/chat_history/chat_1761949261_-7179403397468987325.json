@@ -1,0 +1,23 @@
+{
+  "id": "chat_1761949261_-7179403397468987325",
+  "title": "How can I combine feature engineering and ensemble...",
+  "messages": [
+    {
+      "role": "user",
+      "content": "How can I combine feature engineering and ensemble methods?",
+      "timestamp": "18:20"
+    },
+    {
+      "role": "system",
+      "content": "⚠️ Backend error: 500",
+      "timestamp": "18:21"
+    }
+  ],
+  "timestamp": "2025-10-31T18:21:01.174538",
+  "user_info": {
+    "kaggle_username": "Hemankit",
+    "competition_slug": "titanic",
+    "competition_name": "titanic"
+  },
+  "session_id": "75f70b49-e4eb-4a68-aeb5-f9b7580f2830"
+}

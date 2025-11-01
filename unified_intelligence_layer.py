@@ -1,10 +1,11 @@
 """
 Unified Intelligence Layer - V2.0 Query Analysis and Classification
-Wraps existing routing/intent_router functionality with a clean interface
+Coordinates cross-framework orchestration for optimal agent collaboration
 """
 
 from typing import Dict, Any, Optional
 from routing.intent_router import parse_user_intent, route_to_agents
+from routing.dynamic_orchestrator import DynamicCrossFrameworkOrchestrator
 
 class UnifiedIntelligenceLayer:
     """
@@ -17,6 +18,7 @@ class UnifiedIntelligenceLayer:
         Initialize with optional LLM (will use default from config if not provided)
         """
         self.llm = llm
+        self.dynamic_orchestrator = DynamicCrossFrameworkOrchestrator()
     
     def analyze_query(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """
@@ -130,6 +132,40 @@ class UnifiedIntelligenceLayer:
         
         # Default
         return 'GENERAL'
+    
+    def create_orchestration_plan(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """
+        Create a dynamic orchestration plan that coordinates across frameworks.
+        This is the GAME CHANGER - it allows RAG agents to fetch data,
+        then reasoning agents to analyze, all coordinated intelligently.
+        """
+        # Use the dynamic orchestrator to create a complete plan
+        plan = self.dynamic_orchestrator.create_interaction_plan(query)
+        
+        return {
+            'query': query,
+            'interaction_pattern': plan.pattern.value,
+            'agents': [
+                {
+                    'name': agent.name,
+                    'framework': agent.framework,
+                    'confidence': agent.confidence,
+                    'reasoning': agent.reasoning
+                }
+                for agent in plan.agents
+            ],
+            'execution_order': plan.execution_order,
+            'expected_duration': plan.expected_duration,
+            'complexity_score': plan.complexity_score,
+            'context': context
+        }
+    
+    def execute_orchestration_plan(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """
+        Execute the dynamic orchestration plan.
+        This runs agents across multiple frameworks in the optimal sequence.
+        """
+        return self.dynamic_orchestrator.run(query, context)
 
 
 # Backwards compatibility

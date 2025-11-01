@@ -67,7 +67,7 @@ class ExternalSearchAgent:
         if LLM_AVAILABLE and api_key:
             try:
                 return ChatGoogleGenerativeAI(
-                    model='gemini-2.5-pro',
+                    model='gemini-2.0-flash-exp',
                     temperature=0.1
                 )
             except Exception as e:
