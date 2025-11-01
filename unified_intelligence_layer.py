@@ -142,7 +142,8 @@ class UnifiedIntelligenceLayer:
         then reasoning agents to analyze, all coordinated intelligently.
         """
         # Use the dynamic orchestrator to create a complete plan
-        plan = self.dynamic_orchestrator.create_interaction_plan(query)
+        # IMPORTANT: Pass context so orchestrator can use pre-selected agents!
+        plan = self.dynamic_orchestrator.create_interaction_plan(query, context)
         
         return {
             'query': query,

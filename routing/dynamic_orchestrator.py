@@ -271,9 +271,11 @@ class DynamicCrossFrameworkOrchestrator:
         else:
             return "default"
 
-    def create_interaction_plan(self, query: str) -> InteractionPlan:
+    def create_interaction_plan(self, query: str, context: Dict[str, Any] = None) -> InteractionPlan:
         """Create complete interaction plan for a query"""
         logger.info(f"Creating interaction plan for query: {query}")
+        
+        context = context or {}
         
         # 1. Parse user intent
         parsed_intent = parse_user_intent(query)
@@ -292,7 +294,30 @@ class DynamicCrossFrameworkOrchestrator:
         complexity_analysis = self.analyze_query_complexity(parsed_intent)
         
         # 3. Select agents dynamically
-        selected_agents = self.select_agents_dynamically(parsed_intent)
+        # IMPORTANT: Use pre-selected agents from HybridRouter if provided!
+        if 'selected_agents' in context and context['selected_agents']:
+            logger.info(f"Using pre-selected agents from HybridRouter: {context['selected_agents']}")
+            # Convert HybridRouter agent selections to AgentSelection objects
+            selected_agents = []
+            for agent_info in context['selected_agents']:
+                agent_name = agent_info.get('agent_name')
+                if self.hybrid_router and agent_name in self.hybrid_router.agents:
+                    # Get the agent's reasoning style to determine framework
+                    reasoning_style = parsed_intent.get('reasoning_style', 'default')
+                    framework = self._select_framework_for_agent(agent_name, reasoning_style)
+                    
+                    selected_agents.append(AgentSelection(
+                        name=agent_name,
+                        framework=framework,
+                        confidence=agent_info.get('confidence', 1.0),
+                        reasoning=agent_info.get('reasoning', 'Selected by HybridRouter'),
+                        capabilities=set()  # Will be populated if needed
+                    ))
+            logger.info(f"Converted to {len(selected_agents)} AgentSelection objects")
+        else:
+            # Fallback to dynamic selection if no agents provided
+            logger.info("No pre-selected agents, using dynamic selection")
+            selected_agents = self.select_agents_dynamically(parsed_intent)
         
         # 4. Determine interaction pattern
         interaction_pattern = self.determine_interaction_pattern(complexity_analysis, selected_agents)

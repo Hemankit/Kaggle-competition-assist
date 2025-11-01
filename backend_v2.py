@@ -531,6 +531,10 @@ def handle_v2_query():
         # Step 3: Create Dynamic Orchestration Plan
         print("[V2.0 STEP 3] Creating dynamic orchestration plan...")
         
+        # IMPORTANT: Pass the agents selected by HybridRouter to the orchestration plan
+        # This ensures we use the BEST agents (not randomly selected ones!)
+        orchestrator_context['selected_agents'] = agents_to_use
+        
         # GAME CHANGER: Let UnifiedIntelligenceLayer create a cross-framework plan
         # This allows RAG agents (LangGraph) to fetch Kaggle data,
         # then Reasoning agents (CrewAI/AutoGen) to analyze it!
