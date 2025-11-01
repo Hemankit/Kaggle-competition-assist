@@ -633,6 +633,9 @@ def handle_v2_query():
             for agent_result in agent_results:
                 agent_name = agent_result.get('agent_name', 'unknown')
                 
+                # DEBUG: Print the actual structure returned by the agent
+                print(f"[DEBUG] Agent {agent_name} result structure: {list(agent_result.keys())}")
+                
                 # Check if agent succeeded or failed
                 if 'error' in agent_result:
                     failed_agents.append(agent_name)
@@ -643,12 +646,23 @@ def handle_v2_query():
                 agent_response = agent_result.get('result', {}).get('response', '')
                 if not agent_response:
                     agent_response = agent_result.get('response', '')
+                if not agent_response:
+                    # Try nested result
+                    result_obj = agent_result.get('result', {})
+                    if isinstance(result_obj, dict):
+                        agent_response = result_obj.get('result', '')
+                
+                print(f"[DEBUG] Agent {agent_name} extracted response length: {len(agent_response) if agent_response else 0}")
                 
                 if agent_response:
                     successful_agents.append(agent_name)
                     final_response += f"\n\n{agent_response}"  # Don't label agents, cleaner output
+                else:
+                    print(f"[WARN] Agent {agent_name} succeeded but returned empty response. Full result: {agent_result}")
         
         print(f"[V2.0] Successful agents: {successful_agents}, Failed agents: {failed_agents}")
+        print(f"[DEBUG] final_response length: {len(final_response)}")
+        print(f"[DEBUG] final_response preview: {final_response[:200] if final_response else 'EMPTY'}")
         
         if not final_response:
             final_response = "I processed your query but couldn't generate a response. ChromaDB may be empty."
@@ -662,6 +676,7 @@ def handle_v2_query():
         # Build response
         response_data = {
             "response": final_response.strip(),
+            "final_response": final_response.strip(),  # Frontend expects this key
             "metadata": {
                 "execution_time": execution_time,
                 "complexity": complexity,
