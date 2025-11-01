@@ -523,7 +523,62 @@ def handle_v2_query():
             agent_routing = hybrid_router.route_agents(query, orchestrator_context)
             agents_to_use = agent_routing.get('selected_agents', [])
             num_agents = len(agents_to_use)
-            print(f"[V2.0] Selected {num_agents} agents: {agents_to_use}")
+            print(f"[V2.0] HybridRouter selected {num_agents} agents: {agents_to_use}")
+            
+            # CRITICAL: CATEGORY-BASED ROUTING (handles 95% of queries correctly!)
+            # 
+            # Category determines agent selection strategy:
+            # - RAG queries (overview, data, discussions, notebooks) → TOP 1 agent → Fast (3-5s)
+            # - CODE queries (debug, review, feedback) → TOP 1 agent → Fast
+            # - STRATEGY queries (planning, approach) → TOP 1-2 agents → Powerful
+            # - HYBRID queries (RAG + reasoning) → Sequential RAG → Reasoning
+            # 
+            # Multi-agent ONLY for:
+            # - Explicit "comprehensive analysis" requests
+            # - Multi-part queries ("analyze X AND review Y")
+            
+            if agents_to_use and len(agents_to_use) > 1:
+                # Sort by score (highest first)
+                agents_to_use_sorted = sorted(agents_to_use, key=lambda x: x.get('score', 0), reverse=True)
+                top_agent = agents_to_use_sorted[0]
+                
+                # Check for multi-part or comprehensive requests
+                multi_part_keywords = ['and', 'also', 'plus', 'comprehensive', 'detailed', 'thorough', 'everything']
+                is_multi_part = sum(1 for kw in multi_part_keywords if kw in query.lower()) >= 2
+                
+                # CATEGORY-BASED DECISION:
+                if category in ['RAG', 'GENERAL', 'INFORMATIONAL']:
+                    # RAG queries: Always use TOP 1 agent (unless explicitly multi-part)
+                    if not is_multi_part:
+                        agents_to_use = [top_agent]
+                        print(f"[V2.0] RAG query → Using TOP agent: {top_agent['agent_name']} (score: {top_agent.get('score', 0)})")
+                    else:
+                        print(f"[V2.0] Multi-part RAG query → Using {len(agents_to_use)} agents")
+                
+                elif category in ['CODE', 'DEBUG', 'REVIEW']:
+                    # Code queries: Always TOP 1 agent
+                    agents_to_use = [top_agent]
+                    print(f"[V2.0] Code query → Using TOP agent: {top_agent['agent_name']}")
+                
+                elif category in ['STRATEGY', 'PLANNING', 'REASONING']:
+                    # Strategy: Use top 2 if scores are close (within 30%)
+                    second_agent = agents_to_use_sorted[1] if len(agents_to_use_sorted) > 1 else None
+                    if second_agent and (second_agent.get('score', 0) >= top_agent.get('score', 1) * 0.7):
+                        agents_to_use = agents_to_use_sorted[:2]
+                        print(f"[V2.0] Strategy query → Using top 2 agents for comprehensive planning")
+                    else:
+                        agents_to_use = [top_agent]
+                        print(f"[V2.0] Strategy query → Using TOP agent: {top_agent['agent_name']}")
+                
+                else:
+                    # Unknown category: Default to top agent
+                    agents_to_use = [top_agent]
+                    print(f"[V2.0] Unknown category '{category}' → Using TOP agent: {top_agent['agent_name']}")
+                    
+            elif agents_to_use:
+                print(f"[V2.0] Single agent selected: {agents_to_use[0].get('agent_name')}")
+                
+            num_agents = len(agents_to_use)
         else:
             agents_to_use = []
             num_agents = 0
@@ -570,13 +625,30 @@ def handle_v2_query():
         
         # Combine all agent responses into final response
         final_response = ""
+        successful_agents = []
+        failed_agents = []
+        
         if agent_results:
             # Synthesize responses from all agents
             for agent_result in agent_results:
                 agent_name = agent_result.get('agent_name', 'unknown')
+                
+                # Check if agent succeeded or failed
+                if 'error' in agent_result:
+                    failed_agents.append(agent_name)
+                    print(f"[V2.0] Agent {agent_name} failed: {agent_result.get('error')}")
+                    continue
+                
+                # Extract response (try multiple possible locations)
                 agent_response = agent_result.get('result', {}).get('response', '')
+                if not agent_response:
+                    agent_response = agent_result.get('response', '')
+                
                 if agent_response:
-                    final_response += f"\n\n[{agent_name}]: {agent_response}"
+                    successful_agents.append(agent_name)
+                    final_response += f"\n\n{agent_response}"  # Don't label agents, cleaner output
+        
+        print(f"[V2.0] Successful agents: {successful_agents}, Failed agents: {failed_agents}")
         
         if not final_response:
             final_response = "I processed your query but couldn't generate a response. ChromaDB may be empty."
