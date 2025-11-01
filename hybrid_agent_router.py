@@ -65,19 +65,31 @@ class HybridAgentRouter:
                     logger.warning(f"ChromaDB not available for agents: {e}")
                     retriever = None
                 
-                # Initialize existing agents WITH LLMs and retriever
-                agents.update({
+                # Import DataSectionAgent
+                from agents.data_section_agent import DataSectionAgent
+                
+                # Initialize RAG agents (need retriever + llm)
+                rag_agents = {
                     'competition_summary': CompetitionSummaryAgent(retriever=retriever, llm=retrieval_llm),
                     'notebook_explainer': NotebookExplainerAgent(retriever=retriever, llm=retrieval_llm),
                     'discussion_helper': DiscussionHelperAgent(retriever=retriever, llm=retrieval_llm),
-                    'error_diagnosis': ErrorDiagnosisAgent(retriever=retriever, llm=reasoning_llm),
-                    'code_feedback': CodeFeedbackAgent(retriever=retriever, llm=reasoning_llm),
-                    'progress_monitor': ProgressMonitorAgent(retriever=retriever, llm=retrieval_llm),
-                    'timeline_coach': TimelineCoachAgent(retriever=retriever, llm=retrieval_llm),
-                    'multihop_reasoning': MultiHopReasoningAgent(retriever=retriever, llm=reasoning_llm),
-                    'idea_initiator': IdeaInitiatorAgent(retriever=retriever, llm=reasoning_llm),
-                    'community_engagement': CommunityEngagementAgent(retriever=retriever, llm=retrieval_llm)
-                })
+                    'data_section': DataSectionAgent(retriever=retriever, llm=retrieval_llm),
+                }
+                
+                # Initialize non-RAG agents (only need llm, no retriever)
+                non_rag_agents = {
+                    'error_diagnosis': ErrorDiagnosisAgent(llm=reasoning_llm),
+                    'code_feedback': CodeFeedbackAgent(llm=reasoning_llm),
+                    'progress_monitor': ProgressMonitorAgent(llm=retrieval_llm),
+                    'timeline_coach': TimelineCoachAgent(llm=retrieval_llm),
+                    'multihop_reasoning': MultiHopReasoningAgent(llm=reasoning_llm),
+                    'idea_initiator': IdeaInitiatorAgent(llm=reasoning_llm),
+                    'community_engagement': CommunityEngagementAgent(llm=retrieval_llm)
+                }
+                
+                # Combine all agents
+                agents.update(rag_agents)
+                agents.update(non_rag_agents)
                 logger.info("✅ All agents initialized with LLMs and retriever for hybrid routing")
             except Exception as e:
                 logger.error(f"Error initializing agents: {e}")
