@@ -7,7 +7,7 @@ from sentence_transformers import SentenceTransformer, util
 from typing import List, Tuple, Dict
 
 # Initialize model and section labels
-model = SentenceTransformer("all-MiniLM-L6-v2")
+model = SentenceTransformer("all-mpnet-base-v2")
 
 KAGGLE_SECTIONS = [
     "leaderboard",   # Ranks

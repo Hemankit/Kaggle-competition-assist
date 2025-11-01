@@ -11,7 +11,7 @@ load_dotenv()
 import os
 class IntentClassifier:
     def __init__(self, threshold: float = 0.65):
-        self.model = SentenceTransformer("all-MiniLM-L6-v2")
+        self.model = SentenceTransformer("all-mpnet-base-v2")
         # self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.2)  # Temporarily disabled
         self.llm = None
         self.threshold = threshold

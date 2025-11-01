@@ -155,7 +155,7 @@ if CHROMADB_AVAILABLE:
     try:
         chromadb_pipeline = ChromaDBRAGPipeline(
             collection_name="kaggle_competition_data",
-            embedding_model="all-MiniLM-L6-v2"  # ✅ FIX: Match collection's embedding model (384-dim)
+            embedding_model="all-mpnet-base-v2"  # ✅ FIX: Match collection's embedding model (768-dim)
         )
         print("[OK] ChromaDB pipeline initialized successfully")
     except Exception as e:

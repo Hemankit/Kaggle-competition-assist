@@ -16,7 +16,7 @@ class ChromaDBRAGPipeline:
     but uses ChromaDB for vector storage and retrieval to avoid version conflicts.
     """
     
-    def __init__(self, collection_name: str = "kaggle_competition_data", embedding_model: str = "all-MiniLM-L6-v2"):
+    def __init__(self, collection_name: str = "kaggle_competition_data", embedding_model: str = "all-mpnet-base-v2"):
         """
         Initialize the ChromaDB RAG pipeline.
         

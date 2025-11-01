@@ -40,7 +40,7 @@ class RAGAdapter:
             try:
                 pipeline = ChromaDBRAGPipeline(
                     collection_name="kaggle_competition_data",
-                    embedding_model="all-MiniLM-L6-v2"
+                    embedding_model="all-mpnet-base-v2"
                 )
                 print("✅ ChromaDB RAG Pipeline initialized")
                 return pipeline

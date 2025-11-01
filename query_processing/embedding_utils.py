@@ -5,8 +5,8 @@ Encodes user queries into vector space for similarity and intent classification.
 
 from sentence_transformers import SentenceTransformer
 
-# Load the model globally so it doesn’t reload every time
-sent_transform_model = SentenceTransformer('all-MiniLM-L6-v2')
+# Load the model globally so it doesn't reload every time
+sent_transform_model = SentenceTransformer('all-mpnet-base-v2')
 
 
 def query_embeddings(query: str | list[str]) -> list:
