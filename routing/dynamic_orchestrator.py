@@ -535,5 +535,6 @@ class DynamicCrossFrameworkOrchestrator:
 
     def run(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """Main entry point - creates and executes dynamic interaction plan"""
-        plan = self.create_interaction_plan(query)
+        # CRITICAL: Pass context to create_interaction_plan so it can use pre-selected agents!
+        plan = self.create_interaction_plan(query, context)
         return self.execute_plan(plan, query, context)
