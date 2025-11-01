@@ -30,6 +30,12 @@ Tone: {tone}
 Data Information:
 {section_content}
 
+IMPORTANT FORMATTING RULES:
+- Use exactly these section separators: ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Keep code examples CONCISE (max 15-20 lines per section)
+- Use clear emoji markers (📁, 📊, 🎯, ✓, 📌)
+- Format KEY TAKEAWAY with bullet points, bold text, and 2-3 insights only
+
 Provide a PRACTICAL breakdown covering these 3 key areas:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -58,30 +64,25 @@ Example format:
 2️⃣ LOADING STRATEGY - How to read and validate the data
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Provide Python code showing:
-1. How to load the files correctly
-2. How to validate the data (shape checks, column consistency)
-3. Quick initial inspection
+Provide CONCISE Python code (10-15 lines max) showing:
+- Load files with pandas
+- Shape validation
+- Column consistency check
+- Target distribution check
 
-Example:
 ```python
 import pandas as pd
-import numpy as np
 
-# Load data
+# Load and validate
 train = pd.read_csv('train.csv')
 test = pd.read_csv('test.csv')
+print(f"Train: {{train.shape}} | Test: {{test.shape}}")
 
-# Quick validation
-print(f"Train shape: {{train.shape}}")
-print(f"Test shape: {{test.shape}}")
+# Column check
+train_cols = set(train.columns) - {{'target'}}
+assert train_cols == set(test.columns), "Column mismatch!"
 
-# Check column consistency
-train_cols = set(train.columns) - {{'target_column'}}
-test_cols = set(test.columns)
-assert train_cols == test_cols, "Column mismatch!"
-
-# Target distribution (for classification)
+# Target distribution
 print(train['target'].value_counts(normalize=True))
 ```
 
@@ -89,36 +90,41 @@ print(train['target'].value_counts(normalize=True))
 3️⃣ ESSENTIAL EDA - What to check first
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Guide competitors through critical initial checks:
+Guide competitors through critical initial checks (be CONCISE!):
 
-✓ Missing Values Analysis
+✓ **Missing Values Analysis**
 ```python
-# Check for missing data
 missing = train.isnull().sum()
-print(missing[missing > 0])
-# ⚠️ Highlight columns with >10% missing
+print(missing[missing > 0])  # Show only columns with missing data
 ```
+Highlight columns with >10% missing (these need imputation strategy!)
 
-✓ Feature Types Classification
-- **Numerical**: List continuous features (Age, Price, etc.)
-- **Categorical**: List discrete features (Sex, Category, etc.)  
-- **Identifiers**: Note which columns are IDs (don't use for modeling!)
-- **Dates/Text**: Special handling needed
+✓ **Feature Types Classification**
+- **Numerical**: [List main continuous features]
+- **Categorical**: [List main discrete features]
+- **Identifiers**: [Note ID columns - don't use for modeling!]
 
-✓ Target Variable Analysis (for supervised learning)
-- Distribution (balanced/imbalanced?)
-- Data type (binary, multiclass, continuous?)
-- Any special characteristics
+✓ **Target Variable**
+- Distribution: [e.g., 62% class 0, 38% class 1 = imbalanced]
+- Type: [binary/multiclass/regression]
 
-✓ Quick Correlation Check (for numerical features)
+✓ **Quick Correlation** (numerical features only)
 ```python
-# Which features correlate with target?
-correlations = train.corr()['target'].sort_values(ascending=False)
-print(correlations.head(10))
+train.corr()['target'].sort_values(ascending=False).head(5)
 ```
 
-📌 KEY TAKEAWAY:
-Provide 2-3 actionable insights about which features look most promising or what challenges to expect (heavy missing data, class imbalance, etc.)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📌 KEY TAKEAWAY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Provide 2-3 ACTIONABLE insights in this format:
+- **[Challenge/Opportunity]**: [What to do about it]
+- **[Challenge/Opportunity]**: [What to do about it]
+
+Example:
+- **Missing Data**: Cabin (77%) and Age (20%) need imputation or feature engineering
+- **Class Imbalance**: 62% deceased, 38% survived - use F1/AUC instead of accuracy
+- **Feature Engineering Potential**: Combine SibSp + Parch → FamilySize feature
 
 Response:"""
         
