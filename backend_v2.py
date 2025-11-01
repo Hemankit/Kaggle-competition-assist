@@ -144,13 +144,7 @@ if V2_ORCHESTRATION_AVAILABLE:
         component_orchestrator = ComponentOrchestrator()
         print("[OK] ComponentOrchestrator initialized (CrewAI, AutoGen, LangGraph, Dynamic)")
         
-        # Initialize Unified Intelligence Layer
-        from llms.llm_loader import get_llm_from_config
-        routing_llm = get_llm_from_config("routing")
-        unified_intelligence = UnifiedIntelligenceLayer(llm=routing_llm)
-        print("[OK] Unified Intelligence Layer initialized")
-        
-        # Initialize Hybrid Agent Router with API keys for external search
+        # Initialize Hybrid Agent Router FIRST (it initializes all agents)
         perplexity_key = os.getenv('PERPLEXITY_API_KEY')
         google_key = os.getenv('GOOGLE_API_KEY')
         hybrid_router = HybridAgentRouter(
@@ -158,6 +152,12 @@ if V2_ORCHESTRATION_AVAILABLE:
             google_api_key=google_key
         )
         print("[OK] Hybrid Agent Router initialized")
+        
+        # Initialize Unified Intelligence Layer WITH hybrid_router (for agent access)
+        from llms.llm_loader import get_llm_from_config
+        routing_llm = get_llm_from_config("routing")
+        unified_intelligence = UnifiedIntelligenceLayer(llm=routing_llm, hybrid_router=hybrid_router)
+        print("[OK] Unified Intelligence Layer initialized")
         if perplexity_key:
             print("[OK]   - ExternalSearchAgent (Perplexity) configured")
         else:

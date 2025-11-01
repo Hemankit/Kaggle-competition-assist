@@ -13,12 +13,14 @@ class UnifiedIntelligenceLayer:
     Determines query complexity, category, and optimal routing strategy.
     """
     
-    def __init__(self, llm=None):
+    def __init__(self, llm=None, hybrid_router=None):
         """
-        Initialize with optional LLM (will use default from config if not provided)
+        Initialize with optional LLM and hybrid_router.
+        hybrid_router provides access to initialized agents.
         """
         self.llm = llm
-        self.dynamic_orchestrator = DynamicCrossFrameworkOrchestrator()
+        self.hybrid_router = hybrid_router
+        self.dynamic_orchestrator = DynamicCrossFrameworkOrchestrator(hybrid_router=hybrid_router)
     
     def analyze_query(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """

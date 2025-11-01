@@ -54,11 +54,12 @@ class DynamicCrossFrameworkOrchestrator:
     based on query analysis, without hardcoded sequences.
     """
     
-    def __init__(self):
+    def __init__(self, hybrid_router=None):
         # Lazy imports to avoid circular dependencies
         self.crewai_orchestrator = None
         self.autogen_orchestrator = None 
         self.langgraph_orchestrator = None
+        self.hybrid_router = hybrid_router  # Access to initialized agents
         
         # Framework capability mapping
         self.framework_capabilities = {
@@ -458,8 +459,23 @@ class DynamicCrossFrameworkOrchestrator:
             # Get agent instance
             agent_instance = get_agent(agent_selection.name, mode="default")
             
-            # Execute based on framework
-            if agent_selection.framework == FrameworkCapability.CREWAI.value:
+            # Execute using agents from hybrid_router if available
+            if self.hybrid_router and agent_selection.name in self.hybrid_router.agents:
+                agent = self.hybrid_router.agents[agent_selection.name]
+                # Run the agent directly
+                try:
+                    result = agent.run({
+                        "cleaned_query": query,
+                        "metadata": context or {}
+                    })
+                except Exception as e:
+                    result = {
+                        "agent_name": agent_selection.name,
+                        "response": f"Agent execution failed: {str(e)}",
+                        "error": str(e)
+                    }
+            # Fallback to framework orchestrators (if agents not in hybrid_router)
+            elif agent_selection.framework == FrameworkCapability.CREWAI.value:
                 result = self.crewai_orchestrator.run_single_agent(
                     agent_selection.name, query, context
                 )
