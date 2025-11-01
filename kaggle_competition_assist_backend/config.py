@@ -13,7 +13,7 @@ class Config:
     HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 
     # Models for tasks
-    DEFAULT_ROUTING_AND_CLASSIFICATION_MODEL = "gemini-1.5-flash"
+    DEFAULT_ROUTING_AND_CLASSIFICATION_MODEL = "gemini-2.5-flash"
     DEFAULT_DEEP_SCRAPE_DECISION_MODEL = "mixtral-8x7b-32768"
     DEFAULT_AGENT_REASONING_MODEL = "deepseek-v2.0-chat"
     DEFAULT_AGGREGATION_AND_SUMMARIZATION_MODEL = "microsoft/phi-3-medium-128k-instruct"
