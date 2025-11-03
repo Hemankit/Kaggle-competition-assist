@@ -202,6 +202,7 @@ if V2_ORCHESTRATION_AVAILABLE:
 
 # Initialize ChromaDB RAG Pipeline
 chromadb_pipeline = None
+competition_data_manager = None
 if CHROMADB_AVAILABLE:
     try:
         chromadb_pipeline = ChromaDBRAGPipeline(
@@ -209,6 +210,16 @@ if CHROMADB_AVAILABLE:
             embedding_model="all-mpnet-base-v2"
         )
         print("[OK] ChromaDB pipeline initialized successfully")
+        
+        # Initialize Competition Data Manager (lazy loading)
+        from utils.competition_data_manager import CompetitionDataManager
+        competition_data_manager = CompetitionDataManager(
+            rag_pipeline=chromadb_pipeline,
+            kaggle_fetcher=None,  # Will use API directly
+            discussion_scraper=None  # Will instantiate on-demand
+        )
+        print("[OK] Competition Data Manager initialized (lazy loading enabled)")
+        
     except Exception as e:
         print(f"[WARN] Failed to initialize ChromaDB pipeline: {e}")
         CHROMADB_AVAILABLE = False
@@ -518,6 +529,19 @@ def handle_v2_query():
         safe_print(f"\n[V2.0 QUERY] User: {kaggle_username}")
         safe_print(f"[V2.0 QUERY] Competition: {competition_slug}")
         safe_print(f"[V2.0 QUERY] Query: {query}")
+        
+        # LAZY LOADING: Ensure competition data exists in ChromaDB
+        if competition_slug and competition_data_manager:
+            safe_print(f"[V2.0 DATA CHECK] Ensuring {competition_slug} data is cached...")
+            data_status = competition_data_manager.ensure_data_available(
+                competition_slug=competition_slug,
+                sections=["overview", "code", "discussion"]
+            )
+            safe_print(f"[V2.0 DATA STATUS] {data_status}")
+            
+            # If all sections failed, warn user
+            if not any(data_status.values()):
+                safe_print(f"[V2.0 WARNING] No data available for {competition_slug}")
         
         # Check if V2.0 Orchestration is available
         if not V2_ORCHESTRATION_AVAILABLE or not component_orchestrator:
