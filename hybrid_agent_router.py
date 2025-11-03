@@ -116,11 +116,11 @@ class HybridAgentRouter:
                 'priority': 2
             },
             'discussion_helper': {
-                'keywords': ['discussion', 'forum', 'post', 'comment', 'community', 'feedback'],
+                'keywords': ['discussion', 'discussing', 'forum', 'post', 'comment', 'community', 'feedback', 'people', 'talking', 'saying', 'thoughts', 'opinions'],
                 'query_types': ['informational', 'analytical'],
                 'complexity': ['low', 'medium', 'high'],
                 'specialties': ['discussion_analysis', 'community_insights'],
-                'priority': 2
+                'priority': 1  # Higher priority for discussion queries
             },
             'error_diagnosis': {
                 'keywords': ['error', 'bug', 'debug', 'fix', 'problem', 'issue', 'troubleshoot'],
@@ -372,6 +372,17 @@ class HybridAgentRouter:
                 'reasoning': self._generate_agent_reasoning(agent_name, query, analysis)
             })
         
+        # INTELLIGENT TIE-BREAKER: If top 2 agents have close scores, use LLM to decide
+        if len(selected_agents) >= 2:
+            top_score = selected_agents[0]['score']
+            second_score = selected_agents[1]['score']
+            score_difference = top_score - second_score
+            
+            # If scores are within 2 points (ambiguous), use LLM tie-breaker
+            if score_difference <= 2:
+                logger.info(f"[HYBRID ROUTING] Close scores detected (diff={score_difference}). Using LLM tie-breaker...")
+                selected_agents = self._llm_tie_breaker(query, selected_agents[:2], analysis)
+        
         return selected_agents
 
     def _generate_agent_reasoning(self, agent_name: str, query: str, analysis: Dict[str, Any]) -> str:
@@ -397,6 +408,91 @@ class HybridAgentRouter:
             reasoning_parts.append("Query requires complex reasoning")
         
         return "; ".join(reasoning_parts) if reasoning_parts else "General match based on query characteristics"
+
+    def _llm_tie_breaker(self, query: str, top_candidates: List[Dict[str, Any]], analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Use LLM to break ties when keyword scores are close.
+        
+        Args:
+            query: User query
+            top_candidates: Top 2 agents with close scores
+            analysis: Query analysis
+            
+        Returns:
+            Reordered list with LLM-selected best agent first
+        """
+        try:
+            from llms.llm_loader import get_llm_from_config
+            
+            # Get fast LLM for routing
+            llm = get_llm_from_config("routing")
+            
+            # Build agent descriptions
+            agent_descriptions = []
+            for candidate in top_candidates:
+                agent_name = candidate['agent_name']
+                capabilities = self.agent_capabilities[agent_name]
+                description = f"""
+Agent: {agent_name}
+Keywords: {', '.join(capabilities['keywords'][:8])}  # Show first 8 keywords
+Specialties: {', '.join(capabilities['specialties'])}
+Query Types: {', '.join(capabilities['query_types'])}
+"""
+                agent_descriptions.append(description)
+            
+            # Create prompt for LLM
+            prompt = f"""You are an intelligent agent router. Given a user query, select the BEST agent to handle it.
+
+USER QUERY: "{query}"
+
+CANDIDATE AGENTS:
+{agent_descriptions[0]}
+---
+{agent_descriptions[1]}
+
+QUERY CONTEXT:
+- Type: {analysis['query_type']}
+- Complexity: {analysis['complexity']}
+- Requires reasoning: {analysis['requires_reasoning']}
+
+TASK: Which agent is BEST suited for this query?
+
+IMPORTANT:
+- Consider the SEMANTIC MEANING of the query, not just keywords
+- "people discussing" → discussion_helper (not competition_summary)
+- "what data files" → data_section (not competition_summary)
+- "how to debug" → error_diagnosis (not code_feedback)
+
+Respond with ONLY the agent name (e.g., "discussion_helper" or "competition_summary").
+"""
+            
+            # Call LLM
+            response = llm.invoke(prompt)
+            selected_agent_name = response.content.strip().lower()
+            
+            # Find the selected agent
+            for i, candidate in enumerate(top_candidates):
+                if candidate['agent_name'] in selected_agent_name or selected_agent_name in candidate['agent_name']:
+                    # Move selected agent to position 0
+                    logger.info(f"[HYBRID ROUTING] LLM selected: {candidate['agent_name']} (was rank {i+1})")
+                    
+                    # Boost confidence and add reasoning
+                    candidate['confidence'] = 0.95
+                    candidate['reasoning'] = f"[LLM-Selected] {candidate['reasoning']}"
+                    candidate['score'] += 5  # Boost score to ensure it's top
+                    
+                    # Reorder: LLM choice first, others follow
+                    reordered = [candidate] + [c for c in top_candidates if c != candidate]
+                    return reordered
+            
+            # If LLM response doesn't match, log warning and return original order
+            logger.warning(f"[HYBRID ROUTING] LLM response '{selected_agent_name}' didn't match candidates. Using keyword scores.")
+            return top_candidates
+            
+        except Exception as e:
+            # Fallback to keyword scores if LLM fails
+            logger.warning(f"[HYBRID ROUTING] LLM tie-breaker failed: {e}. Using keyword scores.")
+            return top_candidates
 
     def _create_routing_plan(self, query: str, context: Dict[str, Any], selected_agents: List[Dict[str, Any]], 
                            external_search_needed: bool, external_reasoning: str, rag_result: Dict[str, Any], 

@@ -167,6 +167,16 @@ class ChromaDBChunker:
             meta["url"] = str(doc["url"])
         if "title" in doc and doc["title"]:
             meta["title"] = str(doc["title"])
+        if "competition_slug" in doc and doc["competition_slug"]:
+            meta["competition_slug"] = str(doc["competition_slug"])
+        if "author" in doc and doc["author"]:
+            meta["author"] = str(doc["author"])
+        if "votes" in doc:
+            meta["votes"] = int(doc["votes"]) if isinstance(doc["votes"], (int, float)) else 0
+        if "is_pinned" in doc:
+            meta["is_pinned"] = bool(doc["is_pinned"])
+        if "notebook_ref" in doc and doc["notebook_ref"]:
+            meta["notebook_ref"] = str(doc["notebook_ref"])
         
         return meta
 

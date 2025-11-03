@@ -27,7 +27,8 @@ class BaseRAGRetrievalAgent:
             query=cleaned_query,
             top_k_retrieval=20,
             top_k_final=top_k,
-            competition_slug=competition_slug  # CRITICAL: Filter by current competition!
+            competition_slug=competition_slug,  # CRITICAL: Filter by current competition!
+            section=self.section if hasattr(self, 'section') else None  # Filter by section (e.g., "code" for notebooks)
         )
         return docs
 

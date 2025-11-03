@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Backend V2.0 - Flask Backend with MasterOrchestrator Integration
 """
@@ -9,6 +10,34 @@ from datetime import datetime
 import os
 import sys
 import io
+import logging
+
+# Fix Windows console encoding for Unicode characters
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except:
+        pass
+
+# Configure logging with UTF-8 encoding
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger(__name__)
+
+# Safe print function that never crashes
+def safe_print(msg):
+    """Print with fallback to ASCII if Unicode fails"""
+    try:
+        print(msg)
+    except UnicodeEncodeError:
+        try:
+            print(msg.encode('ascii', 'replace').decode('ascii'))
+        except:
+            print("[Print failed - encoding error]")
 
 # Add project root to path for imports
 project_root = os.path.dirname(os.path.abspath(__file__))
@@ -467,9 +496,9 @@ def handle_v2_query():
     1. Unified Intelligence Layer analyzes query (complexity + category)
     2. Hybrid Agent Router selects optimal agents
     3. Decide orchestration mode based on complexity:
-       - Simple (low complexity, 1 agent) → LangGraph (fast, 3-5s)
-       - Complex (high complexity, 2-3 agents) → CrewAI/AutoGen (powerful)
-       - Very complex → Dynamic mode (auto-select best framework)
+       - Simple (low complexity, 1 agent) -> LangGraph (fast, 3-5s)
+       - Complex (high complexity, 2-3 agents) -> CrewAI/AutoGen (powerful)
+       - Very complex -> Dynamic mode (auto-select best framework)
     """
     try:
         data = request.get_json()
@@ -486,9 +515,9 @@ def handle_v2_query():
         competition_slug = user_context.get("competition_slug", "")
         session_id = user_context.get("session_id", "")
         
-        print(f"\n[V2.0 QUERY] User: {kaggle_username}")
-        print(f"[V2.0 QUERY] Competition: {competition_slug}")
-        print(f"[V2.0 QUERY] Query: {query}")
+        safe_print(f"\n[V2.0 QUERY] User: {kaggle_username}")
+        safe_print(f"[V2.0 QUERY] Competition: {competition_slug}")
+        safe_print(f"[V2.0 QUERY] Query: {query}")
         
         # Check if V2.0 Orchestration is available
         if not V2_ORCHESTRATION_AVAILABLE or not component_orchestrator:
@@ -507,31 +536,31 @@ def handle_v2_query():
         }
         
         # Step 1: Use Unified Intelligence Layer to analyze query
-        print("[V2.0 STEP 1] Analyzing query with Unified Intelligence Layer...")
+        safe_print("[V2.0 STEP 1] Analyzing query with Unified Intelligence Layer...")
         if unified_intelligence:
             query_analysis = unified_intelligence.analyze_query(query, orchestrator_context)
             complexity = query_analysis.get('complexity', 'medium')
             category = query_analysis.get('category', 'GENERAL')
-            print(f"[V2.0] Complexity: {complexity}, Category: {category}")
+            safe_print(f"[V2.0] Complexity: {complexity}, Category: {category}")
         else:
             complexity = "medium"
             category = "GENERAL"
         
         # Step 2: Use Hybrid Router to select agents
-        print("[V2.0 STEP 2] Selecting agents with Hybrid Router...")
+        safe_print("[V2.0 STEP 2] Selecting agents with Hybrid Router...")
         if hybrid_router:
             agent_routing = hybrid_router.route_agents(query, orchestrator_context)
             agents_to_use = agent_routing.get('selected_agents', [])
             num_agents = len(agents_to_use)
-            print(f"[V2.0] HybridRouter selected {num_agents} agents: {agents_to_use}")
+            safe_print(f"[V2.0] HybridRouter selected {num_agents} agents: {agents_to_use}")
             
             # CRITICAL: CATEGORY-BASED ROUTING (handles 95% of queries correctly!)
             # 
             # Category determines agent selection strategy:
-            # - RAG queries (overview, data, discussions, notebooks) → TOP 1 agent → Fast (3-5s)
-            # - CODE queries (debug, review, feedback) → TOP 1 agent → Fast
-            # - STRATEGY queries (planning, approach) → TOP 1-2 agents → Powerful
-            # - HYBRID queries (RAG + reasoning) → Sequential RAG → Reasoning
+            # - RAG queries (overview, data, discussions, notebooks) -> TOP 1 agent -> Fast (3-5s)
+            # - CODE queries (debug, review, feedback) -> TOP 1 agent -> Fast
+            # - STRATEGY queries (planning, approach) -> TOP 1-2 agents -> Powerful
+            # - HYBRID queries (RAG + reasoning) -> Sequential RAG -> Reasoning
             # 
             # Multi-agent ONLY for:
             # - Explicit "comprehensive analysis" requests
@@ -547,36 +576,36 @@ def handle_v2_query():
                 is_multi_part = sum(1 for kw in multi_part_keywords if kw in query.lower()) >= 2
                 
                 # CATEGORY-BASED DECISION:
-                if category in ['RAG', 'GENERAL', 'INFORMATIONAL']:
-                    # RAG queries: Always use TOP 1 agent (unless explicitly multi-part)
+                if category in ['RAG', 'GENERAL', 'INFORMATIONAL', 'HYBRID']:
+                    # RAG queries (including HYBRID): Always use TOP 1 agent (unless explicitly multi-part)
                     if not is_multi_part:
                         agents_to_use = [top_agent]
-                        print(f"[V2.0] RAG query → Using TOP agent: {top_agent['agent_name']} (score: {top_agent.get('score', 0)})")
+                        safe_print(f"[V2.0] RAG query -> Using TOP agent: {top_agent['agent_name']} (score: {top_agent.get('score', 0)})")
                     else:
-                        print(f"[V2.0] Multi-part RAG query → Using {len(agents_to_use)} agents")
+                        safe_print(f"[V2.0] Multi-part RAG query -> Using {len(agents_to_use)} agents")
                 
                 elif category in ['CODE', 'DEBUG', 'REVIEW']:
                     # Code queries: Always TOP 1 agent
                     agents_to_use = [top_agent]
-                    print(f"[V2.0] Code query → Using TOP agent: {top_agent['agent_name']}")
+                    safe_print(f"[V2.0] Code query -> Using TOP agent: {top_agent['agent_name']}")
                 
                 elif category in ['STRATEGY', 'PLANNING', 'REASONING']:
                     # Strategy: Use top 2 if scores are close (within 30%)
                     second_agent = agents_to_use_sorted[1] if len(agents_to_use_sorted) > 1 else None
                     if second_agent and (second_agent.get('score', 0) >= top_agent.get('score', 1) * 0.7):
                         agents_to_use = agents_to_use_sorted[:2]
-                        print(f"[V2.0] Strategy query → Using top 2 agents for comprehensive planning")
+                        safe_print(f"[V2.0] Strategy query -> Using top 2 agents for comprehensive planning")
                     else:
                         agents_to_use = [top_agent]
-                        print(f"[V2.0] Strategy query → Using TOP agent: {top_agent['agent_name']}")
+                        safe_print(f"[V2.0] Strategy query -> Using TOP agent: {top_agent['agent_name']}")
                 
                 else:
                     # Unknown category: Default to top agent
                     agents_to_use = [top_agent]
-                    print(f"[V2.0] Unknown category '{category}' → Using TOP agent: {top_agent['agent_name']}")
+                    safe_print(f"[V2.0] Unknown category '{category}' -> Using TOP agent: {top_agent['agent_name']}")
                     
             elif agents_to_use:
-                print(f"[V2.0] Single agent selected: {agents_to_use[0].get('agent_name')}")
+                safe_print(f"[V2.0] Single agent selected: {agents_to_use[0].get('agent_name')}")
                 
             num_agents = len(agents_to_use)
         else:
@@ -584,7 +613,7 @@ def handle_v2_query():
             num_agents = 0
         
         # Step 3: Create Dynamic Orchestration Plan
-        print("[V2.0 STEP 3] Creating dynamic orchestration plan...")
+        safe_print("[V2.0 STEP 3] Creating dynamic orchestration plan...")
         
         # IMPORTANT: Pass the agents selected by HybridRouter to the orchestration plan
         # This ensures we use the BEST agents (not randomly selected ones!)
@@ -601,23 +630,23 @@ def handle_v2_query():
         planned_agents = orchestration_plan.get('agents', [])
         expected_duration = orchestration_plan.get('expected_duration', 'unknown')
         
-        print(f"[V2.0] Orchestration Plan:")
-        print(f"  - Pattern: {interaction_pattern}")
-        print(f"  - Agents: {len(planned_agents)}")
-        print(f"  - Expected Duration: {expected_duration}")
+        safe_print(f"[V2.0] Orchestration Plan:")
+        safe_print(f"  - Pattern: {interaction_pattern}")
+        safe_print(f"  - Agents: {len(planned_agents)}")
+        safe_print(f"  - Expected Duration: {expected_duration}")
         
         for i, agent in enumerate(planned_agents):
-            print(f"  - Agent {i+1}: {agent['name']} ({agent['framework']}) - {agent['confidence']:.2f}")
+            safe_print(f"  - Agent {i+1}: {agent['name']} ({agent['framework']}) - {agent['confidence']:.2f}")
         
         # Step 4: Execute dynamic orchestration plan
-        print(f"[V2.0 STEP 4] Executing dynamic orchestration plan...")
+        safe_print(f"[V2.0 STEP 4] Executing dynamic orchestration plan...")
         start_time = datetime.now()
         
         # Execute the plan using UnifiedIntelligenceLayer's dynamic orchestrator
         result = unified_intelligence.execute_orchestration_plan(query, orchestrator_context)
         
         execution_time = (datetime.now() - start_time).total_seconds()
-        print(f"[V2.0] Query processed in {execution_time:.2f}s")
+        safe_print(f"[V2.0] Query processed in {execution_time:.2f}s")
         
         # Extract response from dynamic orchestrator result
         execution_summary = result.get('execution_summary', {})
@@ -639,7 +668,7 @@ def handle_v2_query():
                 # Check if agent succeeded or failed
                 if 'error' in agent_result:
                     failed_agents.append(agent_name)
-                    print(f"[V2.0] Agent {agent_name} failed: {agent_result.get('error')}")
+                    safe_print(f"[V2.0] Agent {agent_name} failed: {agent_result.get('error')}")
                     continue
                 
                 # Extract response (try multiple possible locations)
@@ -660,7 +689,7 @@ def handle_v2_query():
                 else:
                     print(f"[WARN] Agent {agent_name} succeeded but returned empty response. Full result: {agent_result}")
         
-        print(f"[V2.0] Successful agents: {successful_agents}, Failed agents: {failed_agents}")
+        safe_print(f"[V2.0] Successful agents: {successful_agents}, Failed agents: {failed_agents}")
         print(f"[DEBUG] final_response length: {len(final_response)}")
         print(f"[DEBUG] final_response preview: {final_response[:200] if final_response else 'EMPTY'}")
         

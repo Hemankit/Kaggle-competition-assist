@@ -330,7 +330,43 @@ Clear, specific questions typically get better responses from the community!
         
         return tip
     
-    def run(
+    def run(self, structured_query: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        V2-compatible run method that fetches discussions from ChromaDB.
+        
+        Args:
+            structured_query: Query with metadata (V2.0 format)
+            
+        Returns:
+            Dict with agent response
+        """
+        try:
+            # Extract query and metadata
+            query = structured_query.get("cleaned_query", structured_query.get("query", ""))
+            metadata = structured_query.get("metadata", {})
+            competition = metadata.get("competition_slug", metadata.get("competition", "Unknown"))
+            
+            # Fetch discussions from ChromaDB
+            chunks = self.fetch_sections(structured_query)
+            
+            # Convert chunks to discussions format
+            discussions = []
+            for chunk in chunks:
+                discussions.append({
+                    'content': chunk.get('content', ''),
+                    'metadata': chunk.get('metadata', {})
+                })
+            
+            # Call legacy run method
+            return self.run_legacy(discussions, query, competition, query_type="search")
+            
+        except Exception as e:
+            return {
+                "agent_name": self.name,
+                "response": f"Discussion analysis failed: {str(e)}"
+            }
+    
+    def run_legacy(
         self,
         discussions: List[Dict[str, Any]],
         user_query: str,

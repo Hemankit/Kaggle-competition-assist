@@ -1,0 +1,23 @@
+{
+  "id": "chat_1762127193_2900068333749688911",
+  "title": "Show me the top notebooks for Titanic",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Show me the top notebooks for Titanic",
+      "timestamp": "18:46"
+    },
+    {
+      "role": "system",
+      "content": "⚠️ Backend error: 500",
+      "timestamp": "18:46"
+    }
+  ],
+  "timestamp": "2025-11-02T18:46:33.824334",
+  "user_info": {
+    "kaggle_username": "Hemankit",
+    "competition_slug": "titanic",
+    "competition_name": "titanic"
+  },
+  "session_id": "a3b65227-e1da-45c5-8736-31606cc146ea"
+}

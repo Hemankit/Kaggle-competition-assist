@@ -16,13 +16,14 @@ class ChromaDBRAGPipeline:
     but uses ChromaDB for vector storage and retrieval to avoid version conflicts.
     """
     
-    def __init__(self, collection_name: str = "kaggle_competition_data", embedding_model: str = "all-mpnet-base-v2"):
+    def __init__(self, collection_name: str = "kaggle_competition_data", embedding_model: str = "all-mpnet-base-v2", target_sections: List[str] = None):
         """
         Initialize the ChromaDB RAG pipeline.
         
         Args:
             collection_name: Name of the ChromaDB collection
             embedding_model: Name of the sentence transformer model
+            target_sections: List of sections to process (default: ["overview", "discussion"])
         """
         try:
             import chromadb
@@ -44,7 +45,7 @@ class ChromaDBRAGPipeline:
             
             # Initialize components
             self.retriever = ChromaDBRetriever(self.chroma_client, collection_name, self.embedding_model)
-            self.chunker = ChromaDBChunker(self.embedding_model)
+            self.chunker = ChromaDBChunker(self.embedding_model, target_sections=target_sections)
             self.indexer = ChromaDBIndexer(self.chroma_client, collection_name, self.embedding_model)
             
             logger.info(f"ChromaDB RAG Pipeline initialized with collection: {collection_name}")
@@ -71,7 +72,7 @@ class ChromaDBRAGPipeline:
         result = self.chunker.chunk_and_index(pydantic_results, structured_results, self.indexer)
         return result.get("message", f"Chunked and indexed documents")
 
-    def rerank_document_store(self, query: str, top_k_retrieval: int = 20, top_k_final: int = 5, competition_slug: str = None):
+    def rerank_document_store(self, query: str, top_k_retrieval: int = 20, top_k_final: int = 5, competition_slug: str = None, section: str = None):
         """
         Retrieve and rerank documents using the ChromaDB retriever.
         
@@ -80,12 +81,24 @@ class ChromaDBRAGPipeline:
             top_k_retrieval: Number of documents to retrieve before reranking
             top_k_final: Number of documents to return after reranking
             competition_slug: Optional competition filter (e.g., "titanic")
+            section: Optional section filter (e.g., "code", "discussion", "overview")
         """
-        # Build metadata filter if competition_slug is provided
+        # Build metadata filter if competition_slug or section is provided
         where_filter = None
+        filters = []
+        
         if competition_slug:
-            where_filter = {"competition_slug": competition_slug}
+            filters.append({"competition_slug": competition_slug})
             logger.info(f"Filtering retrieval by competition: {competition_slug}")
+        if section:
+            filters.append({"section": section})
+            logger.info(f"Filtering retrieval by section: {section}")
+        
+        # ChromaDB requires $and operator for multiple conditions
+        if len(filters) > 1:
+            where_filter = {"$and": filters}
+        elif len(filters) == 1:
+            where_filter = filters[0]
         
         retrieved_docs = self.retriever.retrieve(query, top_k=top_k_retrieval, where=where_filter)
         reranked_docs = self.retriever.rerank(query, retrieved_docs, top_k_final)
