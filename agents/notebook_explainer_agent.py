@@ -83,7 +83,51 @@ CRITICAL RULES:
 - Highlight what DOESN'T work (failures teach!)
 - Provide ACTIONABLE next steps
 
-This transforms you from "notebook viewer" to "competitive intelligence assistant"!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+EXAMPLE OUTPUT FORMAT:
+
+NOTEBOOK INTELLIGENCE FOR {competition}
+
+PINNED NOTEBOOKS (Official/Featured):
+
+1. "Baseline Notebook Title" by Author
+   - Votes: X | Key Strength: Clean workflow, proper validation
+   - WHY IT MATTERS: Demonstrates best practices for data splitting and CV strategy
+   - USE THIS FOR: Your starting template - get a quick 0.78 submission
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+COMMUNITY INNOVATIONS (Unpinned):
+
+1. "Feature Engineering Magic" by Top_Kaggler
+   - Votes: Y | Score: 0.82 (+4% vs baseline!)
+   - KEY INNOVATION: Creates 'FamilySize' feature (SibSp + Parch + 1)
+   - COMPETITIVE EDGE: Title extraction from Name ("Mr", "Mrs", "Master")
+   - ACTION: Steal this feature engineering for instant boost
+
+2. "Ensemble Stacking Strategy" by ML_Expert
+   - Votes: Z | Score: 0.81 (+3% vs baseline)
+   - KEY INNOVATION: Stacks RF + XGBoost + LogReg
+   - TRADE-OFF: 5x slower training, but worth it for top 10%
+   - ACTION: Use for final submission, not experimentation
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+KEY TAKEAWAY:
+
+YOUR ROADMAP:
+   1. START: Pinned baseline (0.78) - Quick submission, learn workflow
+   2. BOOST: Add FamilySize + Title features (+4% gain)
+   3. OPTIMIZE: Try ensemble stacking if targeting top 10%
+   4. AVOID: Neural networks (proven to underperform on small datasets)
+
+META-GAME: Community converging on feature engineering over model complexity.
+Focus your time on creative features, not fancy algorithms!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Match this structure and style! This transforms you from "notebook viewer" to "competitive intelligence assistant"!
 """
 
 class NotebookExplainerAgent(BaseRAGRetrievalAgent):
