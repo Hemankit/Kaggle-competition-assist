@@ -43,6 +43,12 @@ RIGHT: "Uses XGBoost with custom objective function for class imbalance - baseli
 WRONG: "Has feature engineering"
 RIGHT: "Creates 'FamilySize' feature (SibSp + Parch + 1) → +4% vs baseline"
 
+💻 CODE SNIPPETS:
+- For KEY INNOVATIONS, include concise code snippets (5-10 lines max)
+- ONLY for non-obvious, high-impact techniques (not standard library usage)
+- Add inline comments and "WHY THIS WORKS" explanation
+- Show exact implementation users can copy/paste
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 3️⃣ HIGHLIGHT DIFFERENTIATION
@@ -82,6 +88,8 @@ CRITICAL RULES:
 - Identify META-GAME trends
 - Highlight what DOESN'T work (failures teach!)
 - Provide ACTIONABLE next steps
+- Include CODE SNIPPETS for KEY INNOVATIONS (5-10 lines, non-obvious techniques only)
+- Add "WHY THIS WORKS" for each code snippet
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -103,12 +111,38 @@ COMMUNITY INNOVATIONS (Unpinned):
 1. "Feature Engineering Magic" by Top_Kaggler
    - Votes: Y | Score: 0.82 (+4% vs baseline!)
    - KEY INNOVATION: Creates 'FamilySize' feature (SibSp + Parch + 1)
+   
+   CODE SNIPPET (Copy this!):
+   ```python
+   # Create FamilySize and IsAlone features
+   df['FamilySize'] = df['SibSp'] + df['Parch'] + 1
+   df['IsAlone'] = (df['FamilySize'] == 1).astype(int)
+   ```
+   
    - COMPETITIVE EDGE: Title extraction from Name ("Mr", "Mrs", "Master")
-   - ACTION: Steal this feature engineering for instant boost
+   
+   CODE SNIPPET (Copy this!):
+   ```python
+   # Extract title from Name column
+   df['Title'] = df['Name'].str.extract(' ([A-Za-z]+)\.', expand=False)
+   df['Title'] = df['Title'].replace(['Lady', 'Countess', 'Capt'], 'Rare')
+   ```
+   
+   - WHY THIS WORKS: FamilySize captures group survival patterns; Title reveals social class beyond Pclass
+   - ACTION: Add these 5 lines to your pipeline for instant +4% boost
 
 2. "Ensemble Stacking Strategy" by ML_Expert
    - Votes: Z | Score: 0.81 (+3% vs baseline)
-   - KEY INNOVATION: Stacks RF + XGBoost + LogReg
+   - KEY INNOVATION: Stacks RF + XGBoost + LogReg with meta-learner
+   
+   CODE SNIPPET (Copy this!):
+   ```python
+   # Ensemble stacking with cross-validation
+   from sklearn.ensemble import StackingClassifier
+   estimators = [('rf', RandomForestClassifier()), ('xgb', XGBClassifier())]
+   stack = StackingClassifier(estimators=estimators, final_estimator=LogisticRegression())
+   ```
+   
    - TRADE-OFF: 5x slower training, but worth it for top 10%
    - ACTION: Use for final submission, not experimentation
 
