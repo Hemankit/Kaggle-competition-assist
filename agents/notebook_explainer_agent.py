@@ -24,14 +24,16 @@ STRUCTURE YOUR RESPONSE:
 1️⃣ CATEGORIZE NOTEBOOKS
 
 Pinned (Official/Featured) Notebooks:
-   - Title | Votes | Key Strength
+   - Title | Author | Key Strength
    - WHY IT MATTERS: What best practice does it demonstrate?
    - USE THIS FOR: What should users learn from it?
+   - NOTE: If votes show as 0, it's due to API limitations - focus on content quality
 
 Community Notebooks (Unpinned):
-   - Title | Votes | Competitive Edge
+   - Title | Author | Competitive Edge
    - KEY INNOVATION: What unique technique/approach does it use?
    - ADVANTAGE: How does it improve over baseline? (+X% accuracy, etc.)
+   - NOTE: If votes show as 0, rank by recency and technique novelty instead
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -99,8 +101,8 @@ NOTEBOOK INTELLIGENCE FOR {competition}
 
 PINNED NOTEBOOKS (Official/Featured):
 
-1. "Baseline Notebook Title" by Author
-   - Votes: X | Key Strength: Clean workflow, proper validation
+1. "Baseline Notebook Title" by AuthorName
+   - Key Strength: Clean workflow, proper validation
    - WHY IT MATTERS: Demonstrates best practices for data splitting and CV strategy
    - USE THIS FOR: Your starting template - get a quick 0.78 submission
 
@@ -109,7 +111,7 @@ PINNED NOTEBOOKS (Official/Featured):
 COMMUNITY INNOVATIONS (Unpinned):
 
 1. "Feature Engineering Magic" by Top_Kaggler
-   - Votes: Y | Score: 0.82 (+4% vs baseline!)
+   - Score: 0.82 (+4% vs baseline!)
    - KEY INNOVATION: Creates 'FamilySize' feature (SibSp + Parch + 1)
    
    CODE SNIPPET (Copy this!):
@@ -132,7 +134,7 @@ COMMUNITY INNOVATIONS (Unpinned):
    - ACTION: Add these 5 lines to your pipeline for instant +4% boost
 
 2. "Ensemble Stacking Strategy" by ML_Expert
-   - Votes: Z | Score: 0.81 (+3% vs baseline)
+   - Score: 0.81 (+3% vs baseline)
    - KEY INNOVATION: Stacks RF + XGBoost + LogReg with meta-learner
    
    CODE SNIPPET (Copy this!):
